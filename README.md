@@ -8,6 +8,25 @@
 
 KingdomOS is a sandbox project where players can generate, import, edit and eventually simulate entire worlds. The full map editor is the familiar **Azgaar's Fantasy Map Generator**, included directly inside the KingdomOS desktop and compiled from the separate [Azgaar-map fork](https://github.com/MrEktidd/Azgaar-map).
 
+## v0.0.3.1 — Active World, Editor Recovery and Atlas Handoff
+
+- **Current map survives closing the World Editor:** the editor is parked, not destroyed, when its OS window is closed. Reopening the app resumes the exact same in-memory Azgaar instance and unsaved editing state.
+- **Reload recovery:** KingdomOS persists an editable native `.map` draft in IndexedDB when you close the editor, after world generation/import, and approximately every 60 seconds while the editor is open. On browser reload, the latest recoverable draft (or the active Atlas world) is imported back into the editor.
+- **Send to Atlas:** capture Azgaar's full native project and a genuine full-map SVG illustration together. This publishes an **active world** independently of any library backups.
+- **Real World Atlas:** displays the actual published map, supports zoom, and provides Edit World and Update Atlas commands.
+- **Linked world updates:** closing an editor that is still editing the active Atlas world refreshes the published map. Switching to a different map requires selecting Send to Atlas again.
+- **World Hub imports** override automatic session recovery rather than racing it.
+
+**The Atlas visual is currently a read-only authored map, not yet a political/economic gameplay renderer.** Native Azgaar editing happens in World Editor. No simulation engine or automatic simulation reconciliation has been added.
+
+### Important data-safety distinctions
+
+- **Closing the editor window** does not close the embedded Azgaar application; its state persists for the lifetime of the KingdomOS browser tab.
+- **Reloading the page** restores the latest successfully stored editor draft, not every unsaved mouse action. The periodic autosave may lag by up to around a minute, and some active Azgaar edit modes block native serialization until finalized.
+- **Send to Atlas** stores the actively published world with its SVG illustration. A draft and an active world are different snapshots until published.
+- **Export .map** or Azgaar's native save remains necessary for an independent backup outside this browser. Browser storage may be cleared and may run out of space.
+- Importing or regenerating a new map never silently overwrites the previously published Atlas world.
+
 ## v0.0.3 — The Worldbuilding Foundation
 
 - **World Hub:** a dedicated launcher for creating, importing, loading and managing maps.
@@ -19,7 +38,7 @@ KingdomOS is a sandbox project where players can generate, import, edit and even
 - **Separate upstream fork:** Azgaar is built during CI from a pinned commit; no generator code has been copied into the KingdomOS source tree.
 - **Full creative freedom:** retain the existing editor’s ability to modify the world without arbitrary KingdomOS restrictions.
 
-**Important:** The World Editor is real, but **the KingdomOS simulation engine does not exist yet**. World-edit reconciliation, a dedicated gameplay Atlas, SettleMaker integration, and true frontier-world generation are subsequent milestones. The pre-existing World Atlas is still a clearly labeled illustrative prototype.
+**Important:** The World Editor and a real Atlas image are now implemented, but **the KingdomOS simulation engine does not exist yet**. World-edit reconciliation, a fully interactive strategic Atlas, SettleMaker integration, and true frontier-world generation are later milestones.
 
 ## Live application
 
@@ -36,8 +55,9 @@ The editor build uses the environment variable `KINGDOMOS_BASE` to configure Vit
 1. Open **World Hub** from the desktop launcher or dock.
 2. Open **World Editor** to generate a map with Azgaar’s full controls, or choose **Import Existing World** to load your own `.map` or `.gz` project.
 3. Make any desired edits using the original generator interface. You can use its native Save and Load tools as usual.
-4. Use **Save to Library** to keep a native editable snapshot in this browser. Use **Export .map** to download a portable backup.
-5. Return to World Hub to reopen, export or delete saved projects.
+4. Click **Send to Atlas** in the World Editor. KingdomOS saves the current native map and shows its full rendered preview in **World Atlas**.
+5. Close World Editor whenever you want—reopening it in the same tab resumes the map you were working on. A separate IndexedDB draft enables recovery after a page reload.
+6. Use **Save to Library** for named snapshots and **Export .map** for an independent backup. Return to World Hub to reopen, export or delete library projects.
 
 The World Library is **browser-local, not cloud storage**. Browser data can be cleared by the user or browser. Export `.map` files as independent backups.
 
@@ -63,9 +83,10 @@ npm run build
 
 ```
 src/
-  apps/                 OS apps, World Hub, full World Editor, appearance and help
+  apps/                 OS apps, real World Atlas, World Hub, full World Editor, appearance and help
   integration/azgaar.ts Versioned parent-side editor bridge
-  world/library.ts      IndexedDB native-map project library
+  world/library.ts      IndexedDB named native-map project library
+  world/current.ts      Active Atlas world + recoverable editor draft
   desktop/              Windows, taskbar, launcher and session persistence
   theme/                Theme engine, saved presets and live design tokens
   ui/                   Reusable icon renderer
@@ -79,7 +100,7 @@ The simulation will ultimately own its own persistent entity state rather than a
 
 ## Next development phases
 
-- **v0.0.4 — Shared World Model:** typed world snapshot extraction, stable entity identifiers and edit-impact detection.
+- **v0.0.4 — Shared World Model:** typed world snapshot extraction, stable entity identifiers, semantic edits and change-impact detection.
 - **v0.0.5 — World Reconciliation:** versioned edits, dependency recalculation and controlled world replacement.
 - **v0.0.6 — Settlement Integration:** SettleMaker inside KingdomOS.
 - **v0.1.0 — Simulation Foundations:** clock, persistent entities and first settlement lifecycle.

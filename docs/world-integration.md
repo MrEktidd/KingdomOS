@@ -4,6 +4,32 @@
 
 Every edit Azgaar permits should remain possible from KingdomOS: regenerate geography, raise terrain, move or delete settlements, change armies, redraw borders, or replace the world outright. The future simulation is responsible for reconciling those changes, not preventing authorship.
 
+## v0.0.3.1 — Active World and reversible editor lifecycle
+
+The full Azgaar editor is now treated as a **persistent workspace**, not a disposable window. KingdomOS parks its existing iframe when World Editor closes; reopening resumes the exact editor instance without triggering Azgaar's initial random/last-saved startup logic.
+
+When the browser tab is reloaded, Azgaar does start its normal boot process, but a new `kingdomos:booted` bridge event allows KingdomOS to safely import a stored native .map **after** Azgaar's UI/map initialization is complete. A separately requested import from World Hub or Atlas takes priority and suppresses draft recovery.
+
+### Two independent world slots
+
+A small IndexedDB `kingdomos-current-world` database tracks:
+
+- `draft`: most recently saved editable native map from the active World Editor (saved on closing, upon successful generation/import, and about every 60 seconds).
+- `active`: the map explicitly published to World Atlas via **Send to Atlas** or **Update Atlas**, with its native .map plus an Azgaar-produced SVG illustration.
+
+Saving a new draft **never** overwrites the active world. Publishing writes the new active world atomically, then clears the earlier recovery draft to avoid duplicating large project files. Closing an editor that remains linked to the active world's map ID updates the active world instead.
+
+World Atlas renders the SVG through an `<img>` element using a browser Blob URL (no imported SVG is injected as active HTML or executable DOM). It currently provides zoom and open/sync controls; tactical selection and shared simulation entities are later milestones.
+
+Azgaar's bridge protocol now also supports:
+- `capture`: full native project and a full-map SVG preview together.
+- `fit`: recalculate the SVG viewport on resuming a previously parked editor window.
+- `booted` event: initial native map pipeline has finished.
+
+The parent validates event origins and frames. Import completion is tracked through Azgaar's existing `map:generated` event; mere command acceptance does not count as a successful import.
+
+The last saved browser recovery draft is not a replacement for native file exports: active edit modes can block serialization, IndexedDB may exhaust quota, and page close/crash may interrupt pending writes.
+
 ## What v0.0.3 implements
 
 The **full** Azgaar UI is hosted in an iframe inside a KingdomOS application, with no reimplementation of the map generator UI. KingdomOS also provides a World Hub, native imports, and browser-local project backups.
@@ -13,7 +39,7 @@ KingdomOS desktop / theme / windows
   ├── World Hub ─────────── IndexedDB World Library (.map/.gz blobs)
   ├── World Editor ──iframe── Azgaar fork (full independent web application)
   │                           ↕ postMessage bridge v1
-  └── World Atlas (currently a separate illustrative prototype)
+  └── World Atlas (read-only actual Azgaar SVG preview)
 
 Future: shared world model → reconciliation → simulation engine
 ```
@@ -24,7 +50,7 @@ Future: shared world model → reconciliation → simulation engine
 
 The KingdomOS CI workflow checks out and builds:
 
-- `MrEktidd/Azgaar-map`, branch `master`, pinned commit `3fda542b6ee59ec8c586afb467eaf07c4e14cf43`.
+- `MrEktidd/Azgaar-map`, branch `master`, pinned commit `daaba81a2792e1851c6909fa553193f19b77c8c0`.
 - Set `KINGDOMOS_BASE=/KingdomOS/dist/world-editor/`.
 - Run `npm ci --ignore-scripts` then `npm run build`.
 - Copy generated assets to `dist/world-editor/`, commit output to `main` for GitHub Pages.
@@ -43,7 +69,7 @@ npm install
 npm run build
 git clone https://github.com/MrEktidd/Azgaar-map.git .azgaar
 cd .azgaar
-git checkout 3fda542b6ee59ec8c586afb467eaf07c4e14cf43
+git checkout daaba81a2792e1851c6909fa553193f19b77c8c0
 npm ci --ignore-scripts
 KINGDOMOS_BASE=/KingdomOS/dist/world-editor/ npm run build
 cd ..
@@ -77,7 +103,7 @@ Events:
 - `ready`: communication module loaded (not necessarily world generation complete).
 - `world-changed`: Azgaar registered a successfully generated or loaded map.
 
-**Event coverage limitation:** ordinary edits do not yet emit granular change events. KingdomOS captures current state on explicit snapshot requests; future versions will instrument the editor's domain mutations and build an incremental edit journal. Import request success means accepted for asynchronous loading, *not* that the map was validated or loaded.
+**Event coverage limitation:** ordinary edits do not yet emit granular change events. Periodic native-map recovery is a coarse checkpoint, not an incremental edit journal. KingdomOS captures current state on explicit snapshot requests; future versions will instrument the editor's domain mutations and build an incremental edit journal. Import request success means accepted for asynchronous loading, *not* that the map was validated or loaded.
 
 ## Imported data and save rules
 

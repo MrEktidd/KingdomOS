@@ -27,6 +27,7 @@ export const paths:Record<string,string>={
  calendar:'M3 6h18v15H3V6ZM7 2v8m10-8v8M3 11h18',
  spark:'m12 2 2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3L12 2Z',
  "refresh-cw":'M20 7v5h-5M4 17v-5h5M5.5 9a7 7 0 0 1 12-2l2.5 5M4 12l2.5 5A7 7 0 0 0 19 15',
+ pencil:'M12 20h9M15.5 4.5l4 4-11 11-4 1 1-4 11-12a2.8 2.8 0 0 1 4 0Z',
  palette:'M12 2a10 10 0 0 0 0 20h1a2 2 0 0 0 1-3.7c-1.1-.6-.7-2.3.6-2.3H18a4 4 0 0 0 4-4A10 10 0 0 0 12 2ZM7 12h.01M9 7h.01M15 7h.01M18 12h.01'
 };
 export function icon(name:string,size=18):string {

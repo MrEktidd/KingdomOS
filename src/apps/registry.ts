@@ -12,6 +12,8 @@ export interface AppSpec {
   width: number;
   height: number;
   maximizeOnOpen?: boolean;
+  /** Park rather than destroy heavy editors when the user closes their window. */
+  keepAliveOnClose?: boolean;
   render(host: HTMLElement, context: Context): void | (() => void);
 }
 type Listener = () => void;

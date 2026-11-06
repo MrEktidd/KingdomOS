@@ -29,10 +29,10 @@ function worldHub(host:HTMLElement,ctx:Context):()=>void {
   const refreshButton=control("Refresh","refresh-cw",()=>void refresh());libraryHeading.append(refreshButton);
   const list=document.createElement("div");list.className="world-library-list";section.append(libraryHeading,list);
   const footer=document.createElement("div");footer.className="world-hub-foot";
-  footer.innerHTML=icon("info",16)+' <span>Worlds are stored in this browser only. Export a .map backup to keep them elsewhere. Simulation and frontier presets will arrive in later milestones.</span>';
+  footer.innerHTML=icon("info",16)+' <span>The World Editor has Send to Atlas for publishing the current map. Saved library projects remain local to this browser; export .map backups. Simulation and frontier presets are still in development.</span>';
   const chooser=document.createElement("input");chooser.type="file";chooser.accept=".map,.gz";chooser.hidden=true;
   actions.append(
-    actionCard("globe","Open World Editor","Explore and freely edit geography, states, cultures, armies and every other Azgaar system.","Launch full editor",()=>ctx.open("world-editor")),
+    actionCard("globe","Open World Editor","Freely edit geography, states, cultures, armies and more. Use Send to Atlas when your world is ready.","Launch full editor",()=>ctx.open("world-editor")),
     actionCard("spark","Generate a World","Create a new procedural world with the original generator’s full controls.","Generate map",()=>{
       const state=getEditorState();ctx.open("world-editor");
       if(state==="ready")void generateNewMap().catch(error=>ctx.toast(error instanceof Error?error.message:String(error)));

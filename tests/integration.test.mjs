@@ -8,6 +8,9 @@ test("World Hub and full World Editor self-register through the app registry",as
   assert.equal(getApp("world-hub").title,"World Hub");
   const editor=getApp("world-editor");
   assert.equal(editor.maximizeOnOpen,true);
+  assert.equal(editor.keepAliveOnClose,true);
+  await import("../dist/apps/atlas.js");
+  assert.equal(getApp("atlas").description,"View the active Azgaar world");
   assert.equal(typeof editor.render,"function");
 });
 
@@ -48,6 +51,21 @@ test("versioned bridge rejects wrong origins and sources, correlates messages, a
   send(frame.contentWindow,"https://kingdomos.test","ok",summary,request.payload.id);
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(bridge.getWorldSummary()?.seed,"abc");
+  send(frame.contentWindow,"https://kingdomos.test","booted",summary,null);
+  assert.equal(bridge.isEditorBooted(),true);
+  const beforeRevision=bridge.getWorldRevision();
+  send({},"https://kingdomos.test","world-changed",{...summary,seed:"bad"},null);
+  assert.equal(bridge.getWorldRevision(),beforeRevision);
+  send(frame.contentWindow,"https://kingdomos.test","world-changed",summary,null);
+  assert.equal(bridge.getWorldRevision(),beforeRevision+1);
+  const capture=bridge.captureWorld();
+  await new Promise(resolve=>setImmediate(resolve));
+  const captureRequest=posted.find(p=>p.payload.name==="capture");
+  assert.ok(captureRequest,"capture must use the typed bridge command");
+  const preview=new Blob(['<svg xmlns="http://www.w3.org/2000/svg"></svg>'],{type:"image/svg+xml"});
+  send(frame.contentWindow,"https://kingdomos.test","ok",{summary,mapText:"editable native map",preview},captureRequest.payload.id);
+  assert.equal((await capture).preview.type,"image/svg+xml");
+
   await assert.rejects(bridge.importMap(new Blob(["x"]),"not-a-map.exe"),/\.map or \.gz/);
   const snapshot=bridge.snapshot();
   await new Promise(resolve=>setImmediate(resolve));
