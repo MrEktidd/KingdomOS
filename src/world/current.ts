@@ -80,6 +80,16 @@ export async function publishActiveWorld(world:WorldCapture,name?:string):Promis
   await operation<undefined>("readwrite",store=>store.delete("draft"));
   notify();return doc;
 }
+/** Rename the published world without altering its native map, preview, or identity. */
+export async function renameActiveWorld(name:string):Promise<StoredWorld> {
+  const label=name.trim();
+  if(!label||label.length>100)throw new Error("World name must be between 1 and 100 characters.");
+  const original=await loadWorldSlot("active");
+  if(!original)throw new Error("No active world is published yet.");
+  const updated:StoredWorld={...original,name:label};
+  await operation<IDBValidKey>("readwrite",store=>store.put(updated));
+  notify();return updated;
+}
 export async function removeWorldSlot(slot:WorldSlot):Promise<void> {
   await operation<undefined>("readwrite",store=>store.delete(slot));notify();
 }

@@ -56,6 +56,11 @@ test("Active Atlas world and editor draft remain distinct and restorable",async(
   const latest=await api.loadWorldSlot("active");
   assert.ok(latest);
   assert.equal((await api.worldMapBlob(latest).text()),project.mapText);
+  const renamed=await api.renameActiveWorld("The Inner Sea Revised");
+  assert.equal(renamed.name,"The Inner Sea Revised");
+  assert.equal(renamed.mapText,project.mapText);
+  assert.equal(renamed.preview.type,"image/svg+xml");
+  assert.equal((await api.loadWorldSlot("active"))?.name,"The Inner Sea Revised");
   assert.equal(data.size,2);
   await api.removeWorldSlot("active");
   assert.equal(await api.loadWorldSlot("active"),null);

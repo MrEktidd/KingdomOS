@@ -2,7 +2,7 @@
 export type AppId = string;
 export interface Context {
   open(id: AppId): void;
-  toast(message: string): void;
+  toast(message: string, tone?: "info" | "success" | "warning" | "error"): void;
 }
 export interface AppSpec {
   id: AppId;

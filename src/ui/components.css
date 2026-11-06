@@ -1,0 +1,128 @@
+/* KingdomOS common controls and app-shell refinements.
+ * All visual values are drawn from the existing theme engine.
+ * This stylesheet loads after legacy app CSS, allowing gradual migration.
+ */
+.ko-button{
+  --ko-control-size:36px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  flex:0 0 auto;width:auto;min-width:0;min-height:var(--ko-control-size);
+  padding:0 13px;border:1px solid var(--ko-border);border-radius:7px;
+  background:var(--ko-surface-raised);color:var(--ko-text);
+  font-size:calc(11px*var(--ko-scale));font-weight:700;line-height:1.2;
+  white-space:nowrap;text-decoration:none;
+  transition:background-color .16s,border-color .16s,box-shadow .16s;
+  cursor:pointer;
+}
+.ko-button>span{overflow:hidden;text-overflow:ellipsis}
+.ko-button svg{color:var(--ko-accent);flex-shrink:0}
+.ko-button:hover:not(:disabled){border-color:var(--ko-accent);background:color-mix(in srgb,var(--ko-accent) 10%,var(--ko-surface-raised))}
+.ko-button:focus-visible,.ko-action-menu summary:focus-visible{outline:2px solid var(--ko-accent);outline-offset:2px}
+.ko-button:disabled{opacity:.52;cursor:wait}
+.ko-button--primary{background:var(--ko-accent);color:var(--ko-accent-text);border-color:var(--ko-accent)}
+.ko-button--primary svg{color:var(--ko-accent-text)}
+.ko-button--primary:hover:not(:disabled){background:color-mix(in srgb,var(--ko-accent) 87%,var(--ko-text));color:var(--ko-accent-text)}
+.ko-button--subtle{background:transparent;border-color:transparent}
+.ko-button--danger{color:var(--ko-danger)}
+.ko-button--danger svg{color:var(--ko-danger)}
+.ko-button--icon{padding:0;width:var(--ko-control-size);min-width:var(--ko-control-size)}
+.ko-toolbar-group{display:inline-flex;align-items:center;flex:0 0 auto;flex-wrap:nowrap;gap:5px;max-width:100%;min-width:0}
+.ko-toolbar-group[aria-label="Map navigation"]{gap:3px;background:var(--ko-surface-inset);border:1px solid var(--ko-border);padding:3px;border-radius:9px}
+.ko-toolbar-group[aria-label="Map navigation"] .ko-button{--ko-control-size:30px;border-color:transparent;background:transparent}
+.ko-toolbar-group[aria-label="Map navigation"] .ko-button:hover{border-color:var(--ko-border);background:var(--ko-surface-raised)}
+.ko-status{display:inline-flex;align-items:center;gap:8px;font-size:10px;font-weight:700;letter-spacing:.55px;color:var(--ko-muted)}
+.ko-status-dot{display:block;width:7px;height:7px;border-radius:50%;background:var(--ko-muted)}
+.ko-status--success .ko-status-dot{background:var(--ko-success)}
+.ko-status--warning .ko-status-dot{background:var(--ko-warning)}
+.ko-status--error .ko-status-dot{background:var(--ko-danger)}
+.ko-action-menu{position:relative;flex-shrink:0;z-index:30}
+.ko-action-menu>summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.ko-action-menu>summary::-webkit-details-marker{display:none}
+.ko-action-menu-list{position:absolute;right:0;top:calc(100% + 8px);z-index:50;min-width:190px;max-width:min(300px,90vw);padding:6px;border-radius:10px;background:var(--ko-surface);border:1px solid var(--ko-border);box-shadow:0 14px 40px #0008;display:grid;gap:2px}
+.ko-action-menu-list .ko-button{width:100%;justify-content:flex-start;text-align:left;min-height:36px;border:0;border-radius:6px}
+.ko-dialog{position:fixed;max-width:min(455px,calc(100vw - 28px));width:100%;max-height:calc(100vh - 30px);padding:0;overflow:auto;background:var(--ko-surface);color:var(--ko-text);border:1px solid var(--ko-border);border-radius:var(--ko-radius);box-shadow:0 18px 70px #000b}
+.ko-dialog::backdrop{background:#02070ab8;backdrop-filter:blur(3px)}
+.ko-dialog-body{padding:26px 27px 18px;display:grid;gap:12px}
+.ko-dialog h2{font-size:19px;letter-spacing:-.5px}
+.ko-dialog p{font-size:12px;color:var(--ko-muted);line-height:1.7}
+.ko-dialog-input{width:100%;min-height:39px;padding:0 13px;color:var(--ko-text);background:var(--ko-surface-inset);border:1px solid var(--ko-border);border-radius:7px}
+.ko-dialog-footer{border-top:1px solid var(--ko-border);display:flex;gap:9px;justify-content:flex-end;padding:15px 27px}
+:root[data-density="compact"] .ko-button{--ko-control-size:30px}
+:root[data-density="compact"] .ko-toolbar-group[aria-label="Map navigation"] .ko-button{--ko-control-size:28px}
+
+/* Atlas command center: container queries respond to the actual OS window size. */
+.atlas-v2{container-type:inline-size;min-width:0;position:relative;display:flex;flex-direction:column;overflow:hidden}
+.atlas-v2-header{position:relative;z-index:5;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;min-width:0;min-height:69px;padding:12px 17px;border-bottom:1px solid var(--ko-border);background:rgba(var(--ko-raised-rgb),.30)}
+.atlas-v2-project{display:flex;flex-direction:column;justify-content:center;gap:5px;flex:1 1 180px;min-width:0}
+.atlas-v2-project .eyebrow{color:var(--ko-muted);letter-spacing:1.55px;font-size:9px}
+.atlas-v2-project-name{font-size:14px;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.atlas-v2-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 1 auto;min-width:0;flex-wrap:wrap}
+.atlas-v2-zoom{min-width:44px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ko-muted);font-size:11px}
+.atlas-v2-viewport{position:relative;z-index:1;flex:1 1 auto;min-height:130px;overflow:hidden;touch-action:none;cursor:grab;background:var(--ko-surface-inset);outline-offset:-4px}
+.atlas-v2-viewport.is-panning{cursor:grabbing}
+.atlas-v2-viewport:focus-visible{outline:2px solid var(--ko-accent)}
+.atlas-v2-viewport::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--ko-border) .5px,transparent .5px),linear-gradient(90deg,var(--ko-border) .5px,transparent .5px);background-size:70px 70px;opacity:.21;pointer-events:none}
+.atlas-v2-map-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;min-width:0;transform-origin:center center;will-change:transform;user-select:none}
+.atlas-v2-image{display:block;max-width:100%;max-height:100%;object-fit:contain;object-position:center;pointer-events:none;user-select:none;filter:drop-shadow(0 7px 25px #0005)}
+.atlas-v2-information{position:absolute;z-index:4;top:15px;right:15px;width:min(300px,calc(100% - 30px));max-height:calc(100% - 30px);overflow:auto;padding:16px;background:rgba(var(--ko-surface-rgb),.96);border:1px solid var(--ko-border);border-radius:10px;box-shadow:0 13px 35px #0006;backdrop-filter:blur(13px);cursor:default}
+.atlas-v2-info-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
+.atlas-v2-info-head strong{font-size:13px}
+.atlas-v2-information dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px 8px;margin:0}
+.atlas-v2-information dt{font-size:10px;color:var(--ko-muted)}
+.atlas-v2-information dd{margin:0;font-weight:600;font-size:11px;text-align:right;overflow-wrap:anywhere}
+.atlas-v2-information p{margin-top:18px;padding-top:12px;border-top:1px solid var(--ko-border);line-height:1.6;color:var(--ko-muted);font-size:10px}
+.atlas-v2-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:20px;max-width:480px;text-align:center;cursor:default}
+.atlas-v2-empty-icon{width:65px;height:65px;display:grid;place-items:center;border:1px solid var(--ko-border);border-radius:15px;background:var(--ko-surface-raised);color:var(--ko-accent)}
+.atlas-v2-empty h2{font-size:20px;letter-spacing:-.5px}
+.atlas-v2-empty p{font-size:12px;color:var(--ko-muted);line-height:1.7;max-width:340px}
+.atlas-v2-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px;padding:9px 16px;border-top:1px solid var(--ko-border);background:rgba(var(--ko-surface-rgb),.65);color:var(--ko-muted);font-size:9px;font-weight:700;letter-spacing:1px}
+.atlas-v2-footer-details{text-align:right;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:65%}
+@container (max-width:800px){
+  .atlas-v2-header{align-items:flex-start;gap:12px}
+  .atlas-v2-toolbar{flex:1 1 100%;justify-content:flex-start}
+  .atlas-v2-project{flex-basis:100%}
+}
+@container (max-width:510px){
+  .atlas-v2-toolbar{gap:5px}
+  .atlas-v2-toolbar .ko-toolbar-group{gap:2px}
+  .atlas-v2-toolbar .ko-button{--ko-control-size:31px;padding:0 9px}
+  .atlas-v2-toolbar .ko-button--icon{padding:0}
+  .atlas-v2-footer-details{display:none}
+}
+@container (max-width:390px){
+  .atlas-v2-toolbar .ko-button[aria-label="Update Atlas"]>span{display:none}
+  .atlas-v2-toolbar .ko-button[aria-label="Update Atlas"]{width:31px;padding:0}
+  .atlas-v2-zoom{min-width:38px}
+}
+@media(prefers-reduced-motion:reduce){.ko-button,.atlas-v2-map-stage{transition:none}}
+
+
+/* Desktop and notifications */
+.system-world{display:inline-block;max-width:min(30vw,320px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+.system-world[data-loaded="true"]{color:var(--ko-accent)}
+.task-end .notification-toggle{display:inline-flex;align-items:center;justify-content:center;width:35px;height:35px;padding:0;background:transparent;border:1px solid var(--ko-border);border-radius:8px;color:var(--ko-muted)}
+.notification-toggle:hover,.notification-toggle[aria-expanded="true"]{color:var(--ko-accent);border-color:var(--ko-accent);background:var(--ko-surface-raised)}
+.notification-center{position:absolute;z-index:1950;bottom:70px;right:16px;width:min(390px,calc(100vw - 34px));max-height:min(530px,calc(100vh - 160px));display:flex;flex-direction:column;overflow:hidden;border-radius:var(--ko-radius);border:1px solid var(--ko-border);background:rgba(var(--ko-surface-rgb),.98);box-shadow:0 20px 65px #0009;backdrop-filter:blur(22px)}
+.notification-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-bottom:1px solid var(--ko-border)}
+.notification-head strong{font-size:13px}
+.notification-head button{background:transparent;border:0;color:var(--ko-accent);font-size:10px;padding:5px 7px}
+.notification-list{overflow:auto;min-height:65px;scrollbar-color:var(--ko-border) transparent}
+.notification-entry{display:grid;gap:7px;padding:14px 16px;border-bottom:1px solid var(--ko-border);border-left:3px solid var(--ko-muted)}
+.notification-entry:last-child{border-bottom:0}
+.notification-entry--error{border-left-color:var(--ko-danger)}
+.notification-entry--success{border-left-color:var(--ko-success)}
+.notification-entry--warning{border-left-color:var(--ko-warning)}
+.notification-entry p{font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.notification-entry span{font-size:9px;color:var(--ko-muted);letter-spacing:.8px}
+.notification-empty{padding:26px;color:var(--ko-muted);text-align:center;font-size:11px}
+.notification-toast{pointer-events:auto;border-left:3px solid var(--ko-accent)}
+.notification-toast--success{border-left-color:var(--ko-success)}
+.notification-toast--error{border-left-color:var(--ko-danger)}
+.notification-toast--warning{border-left-color:var(--ko-warning)}
+.notification-toast>span{flex:1}
+.notification-toast button{display:flex;align-items:center;justify-content:center;padding:3px;border:0;background:transparent;color:var(--ko-muted);cursor:pointer}
+.notification-toast button:hover{color:var(--ko-text)}
+@media(max-width:700px){
+  .task-end{display:flex;gap:0}
+  .task-end .pip,.task-end>span{display:none}
+  .notification-center{bottom:63px}
+}

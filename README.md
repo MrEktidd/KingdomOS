@@ -8,6 +8,21 @@
 
 KingdomOS is a sandbox project where players can generate, import, edit and eventually simulate entire worlds. The full map editor is the familiar **Azgaar's Fantasy Map Generator**, included directly inside the KingdomOS desktop and compiled from the separate [Azgaar-map fork](https://github.com/MrEktidd/Azgaar-map).
 
+## v0.0.3.2 — Interface & Experience Overhaul
+
+- **Atlas toolbar repaired:** replaced fixed-width legacy icon rules with responsive, content-sized groups and an overflow menu. Tested at desktop and narrow-window sizes.
+- **Map navigation:** drag to pan, wheel zoom toward cursor, +/- controls, fit and keyboard map navigation.
+- **World information:** a collapsible panel shows dimensions, seed, map cells, states, settlements and publication time. Rename a world without modifying Azgaar's native project; export `.map` from the Atlas.
+- **Shared UI components:** `src/ui/components.ts` and CSS use live theme tokens for toolbar, button, menu, status indicator and consistent browser dialogs.
+- **OS world status:** the system header now shows the active world rather than the obsolete "WORLD NOT LOADED" label.
+- **Notification history:** a taskbar bell shows important messages after toasts fade, with clear-history controls.
+- **Editor save feedback:** the recovery indicator distinguishes pending, saving, saved, published and failed work. Import, save and replace prompts use common dialogs.
+- **World Hub fixes:** map imports wait for actual Azgaar load completion; world generation/import from a cold editor correctly overrides previous workspace recovery.
+- **Keyboard safeguards:** desktop shortcuts no longer override form fields.
+- **Regression suite:** pure camera and notification tests, world renaming, and Chromium UI tests for responsive controls, map interactions, themes, and editor keep-alive.
+
+**Limits:** Atlas remains a map illustration with an interactive camera, not yet a semantic simulation viewport. Editor recovery is checkpoint-based, and native `.map` exports remain advisable as durable backups.
+
 ## v0.0.3.1 — Active World, Editor Recovery and Atlas Handoff
 
 - **Current map survives closing the World Editor:** the editor is parked, not destroyed, when its OS window is closed. Reopening the app resumes the exact same in-memory Azgaar instance and unsaved editing state.
@@ -77,6 +92,7 @@ Open http://localhost:4173. To run with the full World Editor locally, also buil
 ```bash
 npm test
 npm run build
+npm run test:ui  # Playwright / Chromium; install the browser first
 ```
 
 ## Architecture

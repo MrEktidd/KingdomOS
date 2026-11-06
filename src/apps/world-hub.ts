@@ -1,12 +1,11 @@
 import { icon } from "../ui/icons.js";
 import { registerApp, type Context } from "./registry.js";
-import { getEditorState, getWorldSummary, importMap, generateNewMap, subscribeEditor } from "../integration/azgaar.js";
+import {actionButton,confirmAction} from "../ui/components.js";
+import { getEditorState, getWorldSummary, importMapAndWait, generateNewMap, skipEditorRecoveryOnce, subscribeEditor, waitUntilBooted } from "../integration/azgaar.js";
 import { deleteWorld, downloadWorld, fileLabel, listWorlds, saveWorld, type WorldEntry } from "../world/library.js";
 
 function control(label:string,graphic:string,onclick:()=>void,primary=false):HTMLButtonElement {
-  const button=document.createElement("button");button.type="button";button.className=primary?"btn accent":"btn";
-  button.innerHTML=icon(graphic,16)+"<span></span>";button.querySelector("span")!.textContent=label;
-  button.addEventListener("click",onclick);return button;
+  return actionButton({label,icon:graphic,onClick:onclick,tone:primary?"primary":"default"});
 }
 function actionCard(graphic:string,title:string,description:string,buttonText:string,onclick:()=>void):HTMLElement {
   const card=document.createElement("div");card.className="world-hub-card";
@@ -34,8 +33,16 @@ function worldHub(host:HTMLElement,ctx:Context):()=>void {
   actions.append(
     actionCard("globe","Open World Editor","Freely edit geography, states, cultures, armies and more. Use Send to Atlas when your world is ready.","Launch full editor",()=>ctx.open("world-editor")),
     actionCard("spark","Generate a World","Create a new procedural world with the original generator’s full controls.","Generate map",()=>{
-      const state=getEditorState();ctx.open("world-editor");
-      if(state==="ready")void generateNewMap().catch(error=>ctx.toast(error instanceof Error?error.message:String(error)));
+      void (async()=>{
+        const connected=getEditorState()==="ready";
+        if(connected&&!await confirmAction("Generate a new world?","Azgaar will create a new map. Save any editor changes you want to preserve before continuing."))return;
+        if(!connected)skipEditorRecoveryOnce();
+        ctx.open("world-editor");
+        try{
+          await waitUntilBooted();
+          await generateNewMap();
+        }catch(error){ctx.toast(error instanceof Error?error.message:String(error),"error");}
+      })();
     }),
     actionCard("upload","Import Existing World","Load a native Azgaar .map or .gz file into the editor, preserving its source project.","Choose file",()=>chooser.click())
   );
@@ -47,20 +54,21 @@ function worldHub(host:HTMLElement,ctx:Context):()=>void {
   host.append(header,actions,section,footer,chooser);
   async function importFile(file:File):Promise<void> {
     if(!/\.(map|gz)$/i.test(file.name)||!file.size||file.size>100*1024*1024){ctx.toast("Choose a native .map or .gz file smaller than 100 MB.");return;}
-    if(getEditorState()==="ready"&&!confirm("Importing this project will replace the current editor map. Save your current work first if needed. Continue?"))return;
+    if(getEditorState()==="ready"&&!await confirmAction("Import world?","Importing this project will replace the current editor map. Save your current work first if needed."))return;
     // Preserve the original bytes even if Azgaar later migrates the loaded format.
     try {
       await saveWorld(fileLabel(file.name),file,file.name,"imported");
       window.dispatchEvent(new Event("kingdomos:library-changed"));
     }catch(error){
-      ctx.toast("Could not store original locally: "+(error instanceof Error?error.message:String(error)));
+      ctx.toast("Could not store original locally: "+(error instanceof Error?error.message:String(error)),"warning");
       // Saving a safety copy is optional; the native file remains on the user's machine.
     }
+    if(getEditorState()!=="ready")skipEditorRecoveryOnce();
     ctx.open("world-editor");
     try{
-      await importMap(file,file.name);
-      ctx.toast("Import accepted. Azgaar will confirm once the map finishes loading.");
-    }catch(error){ctx.toast(error instanceof Error?error.message:String(error));}
+      await importMapAndWait(file,file.name);
+      ctx.toast("Import complete. Use Send to Atlas to publish this world.","success");
+    }catch(error){ctx.toast(error instanceof Error?error.message:String(error),"error");}
   }
   let disposed=false;
   async function refresh():Promise<void> {
@@ -94,16 +102,24 @@ function worldHub(host:HTMLElement,ctx:Context):()=>void {
     body.append(name,meta);
     const controls=document.createElement("div");controls.className="world-library-buttons";
     controls.append(control("Open","arrow",()=>{
-      if(getEditorState()==="ready"&&!confirm("Load this saved world in the editor? Unsaved edits to the current map could be lost."))return;
-      ctx.open("world-editor");
-      void importMap(entry.blob,entry.fileName)
-        .then(()=>ctx.toast("Loading "+entry.name+" in Azgaar…"))
-        .catch(e=>ctx.toast(e instanceof Error?e.message:String(e)));
+      void (async()=>{
+        if(getEditorState()==="ready"&&!await confirmAction("Open saved world?","This will replace the map currently open in Azgaar. Save your editor changes first if needed."))return;
+        if(getEditorState()!=="ready")skipEditorRecoveryOnce();
+        ctx.open("world-editor");
+        try{
+          await importMapAndWait(entry.blob,entry.fileName);
+          ctx.toast("Loaded "+entry.name+". Select Send to Atlas to publish it.","success");
+        }catch(e){ctx.toast(e instanceof Error?e.message:String(e),"error");}
+      })();
     }),control("Export","download",()=>downloadWorld(entry)),control("Delete","close",()=>{
-      if(!confirm("Delete “"+entry.name+"” from this browser's World Library? Export a backup first if needed."))return;
-      void deleteWorld(entry.id).then(()=>{
-        ctx.toast("Local world entry deleted.");window.dispatchEvent(new Event("kingdomos:library-changed"));
-      }).catch(e=>ctx.toast(e instanceof Error?e.message:String(e)));
+      void (async()=>{
+        if(!await confirmAction("Delete saved project?","Remove “"+entry.name+"” from this browser's World Library? Export a backup first if needed.",true))return;
+        try{
+          await deleteWorld(entry.id);
+          ctx.toast("Local world entry deleted.","success");
+          window.dispatchEvent(new Event("kingdomos:library-changed"));
+        }catch(e){ctx.toast(e instanceof Error?e.message:String(e),"error");}
+      })();
     }));
     row.append(iconBox,body,controls);
     return row;

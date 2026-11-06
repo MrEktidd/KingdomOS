@@ -46,6 +46,19 @@ jobs:
           test -s dist/main.js
           test -s dist/world-editor/index.html
           grep -q '/KingdomOS/dist/world-editor/' dist/world-editor/index.html
+      - name: Install Chromium for visual regression checks
+        run: npx playwright install --with-deps chromium
+      - name: Browser and responsive layout tests
+        env:
+          CI: 'true'
+        run: npm run test:ui
+      - name: Upload browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdomos-ui-failure-traces
+          path: test-results/
+          if-no-files-found: ignore
       - name: Publish compiled assets for branch-based Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

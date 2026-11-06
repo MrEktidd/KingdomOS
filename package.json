@@ -1,17 +1,19 @@
 {
   "name": "kingdom-os",
-  "version": "0.0.3.1",
+  "version": "0.0.3.2",
   "private": true,
   "type": "module",
-  "description": "KingdomOS desktop, modular apps, and appearance foundation",
+  "description": "KingdomOS premium worldbuilding desktop and Azgaar Atlas",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
     "start": "node scripts/serve.mjs",
-    "test": "npm run check && npm run build && node --test tests/*.test.mjs"
+    "test": "npm run check && npm run build && node --test tests/*.test.mjs",
+    "test:ui": "playwright test"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@playwright/test": "^1.55.0"
   }
 }
