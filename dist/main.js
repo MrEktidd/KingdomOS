@@ -1,4 +1,5 @@
 import "./apps/apps.js";
+import "./apps/atlas.js";
 import "./apps/world-hub.js";
 import "./apps/world-editor.js";
 import "./apps/shortcuts.js";

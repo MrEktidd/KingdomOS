@@ -2,7 +2,7 @@ import { getApps, getApp, onAppsChanged } from "../apps/registry.js";
 import { loadSession, saveSession } from "./session.js";
 import { icon } from "../ui/icons.js";
 export function mountDesktop(root) {
-    root.innerHTML = '<div id="desktop" class="desktop"><div class="wallpaper"><div class="orbit one"></div><div class="orbit two"></div><div class="wallpaper-grid"></div><div class="wallpaper-letter">K<span>·</span>OS</div><div class="wallpaper-caption">A WORLD WORTH BUILDING <span>—</span> A WORLD WORTH WATCHING</div></div><header class="system-bar"><div class="system-brand">' + icon("crown", 22) + '<b>KINGDOM<span>OS</span></b><small>FOUNDATION EDITION</small></div><div class="system-state"><i class="pip on"></i> COMMAND INTERFACE <span class="bar-separator">/</span> WORLD NOT LOADED</div><div class="system-tools">BUILD 0.0.3 <button data-open="appearance" aria-label="Appearance settings" title="Appearance settings">' + icon("settings", 17) + '</button></div></header><aside class="dock" aria-label="Application dock"><button id="dock-menu" aria-label="Open application launcher" title="App launcher">' + icon("grid", 23) + '</button><div class="dock-apps"></div><div class="dock-foot"><button data-open="appearance" aria-label="Appearance" title="Appearance">' + icon("palette", 21) + '</button><button data-open="about" aria-label="About" title="About">' + icon("info", 20) + '</button></div></aside><main class="workspace" id="workspace" aria-label="Desktop windows"></main><div id="launcher" class="launcher" hidden><div class="launcher-head"><b>APPLICATIONS</b><small>KINGDOMOS</small></div><label class="launcher-search"><span>SEARCH APPLICATIONS</span><input id="launcher-search" type="search" autocomplete="off" placeholder="Find an application..." aria-label="Search applications" /></label><div class="launcher-list"></div><div class="launcher-tip">CTRL + K TO TOGGLE</div></div><div id="toasts" class="toasts" aria-live="polite"></div><footer class="taskbar"><button id="taskbar-menu">' + icon("grid", 18) + ' <span>Applications</span></button><div class="taskbar-line"></div><div class="task-apps"></div><div class="task-end"><i class="pip on"></i> LOCAL SESSION <span>/</span> v0.0.3</div></footer></div>';
+    root.innerHTML = '<div id="desktop" class="desktop"><div class="wallpaper"><div class="orbit one"></div><div class="orbit two"></div><div class="wallpaper-grid"></div><div class="wallpaper-letter">K<span>·</span>OS</div><div class="wallpaper-caption">A WORLD WORTH BUILDING <span>—</span> A WORLD WORTH WATCHING</div></div><header class="system-bar"><div class="system-brand">' + icon("crown", 22) + '<b>KINGDOM<span>OS</span></b><small>FOUNDATION EDITION</small></div><div class="system-state"><i class="pip on"></i> COMMAND INTERFACE <span class="bar-separator">/</span> WORLD NOT LOADED</div><div class="system-tools">BUILD 0.0.3.1 <button data-open="appearance" aria-label="Appearance settings" title="Appearance settings">' + icon("settings", 17) + '</button></div></header><aside class="dock" aria-label="Application dock"><button id="dock-menu" aria-label="Open application launcher" title="App launcher">' + icon("grid", 23) + '</button><div class="dock-apps"></div><div class="dock-foot"><button data-open="appearance" aria-label="Appearance" title="Appearance">' + icon("palette", 21) + '</button><button data-open="about" aria-label="About" title="About">' + icon("info", 20) + '</button></div></aside><main class="workspace" id="workspace" aria-label="Desktop windows"></main><div id="launcher" class="launcher" hidden><div class="launcher-head"><b>APPLICATIONS</b><small>KINGDOMOS</small></div><label class="launcher-search"><span>SEARCH APPLICATIONS</span><input id="launcher-search" type="search" autocomplete="off" placeholder="Find an application..." aria-label="Search applications" /></label><div class="launcher-list"></div><div class="launcher-tip">CTRL + K TO TOGGLE</div></div><div id="toasts" class="toasts" aria-live="polite"></div><footer class="taskbar"><button id="taskbar-menu">' + icon("grid", 18) + ' <span>Applications</span></button><div class="taskbar-line"></div><div class="task-apps"></div><div class="task-end"><i class="pip on"></i> LOCAL SESSION <span>/</span> v0.0.3.1</div></footer></div>';
     const desktop = root.querySelector("#desktop"), workspace = root.querySelector("#workspace");
     const launcher = root.querySelector("#launcher"), launcherList = launcher.querySelector(".launcher-list");
     const dock = root.querySelector(".dock-apps"), taskbar = root.querySelector(".task-apps"), toasts = root.querySelector("#toasts");
@@ -25,8 +25,8 @@ export function mountDesktop(root) {
             const original = w.maximized && w.previous ? w.previous : w;
             obj[id] = { x: original.x, y: original.y, w: original.w, h: original.h, minimized: w.minimized, maximized: w.maximized };
         }
-        const active = [...windows.values()].filter(w => !w.minimized).sort((a, b) => b.z - a.z)[0]?.id ?? null;
-        saveSession({ version: 2, windows: obj, open: [...windows.keys()], active });
+        const active = [...windows.values()].filter(w => !w.minimized && !w.parked).sort((a, b) => b.z - a.z)[0]?.id ?? null;
+        saveSession({ version: 2, windows: obj, open: [...windows.values()].filter(w => !w.parked).map(w => w.id), active });
     }
     function clamp(w) {
         const maxW = Math.max(290, workspace.clientWidth - 18), maxH = Math.max(210, workspace.clientHeight - 18);
@@ -42,13 +42,13 @@ export function mountDesktop(root) {
         s.width = w.w + "px";
         s.height = w.h + "px";
         s.zIndex = String(w.z);
-        w.element.hidden = w.minimized;
+        w.element.hidden = w.minimized || w.parked;
         w.element.classList.toggle("maximized", w.maximized);
     }
     function focused(w) {
         w.z = ++order;
         for (const other of windows.values()) {
-            other.element.classList.toggle("focused", other === w);
+            other.element.classList.toggle("focused", other === w && !other.parked);
             display(other);
         }
         refreshTaskbar();
@@ -61,14 +61,14 @@ export function mountDesktop(root) {
                 continue;
             const b = document.createElement("button");
             b.type = "button";
-            b.className = "dock-app" + (windows.has(app.id) ? " opened" : "");
+            b.className = "dock-app" + ((windows.has(app.id) && !windows.get(app.id)?.parked) ? " opened" : "");
             b.title = app.title;
             b.setAttribute("aria-label", app.title);
             b.innerHTML = icon(app.icon, 21);
             b.addEventListener("click", () => open(app.id));
             dock.append(b);
         }
-        for (const w of [...windows.values()].sort((a, b) => a.z - b.z)) {
+        for (const w of [...windows.values()].filter(w => !w.parked).sort((a, b) => a.z - b.z)) {
             const b = document.createElement("button"), app = getApp(w.id);
             b.type = "button";
             b.className = "task-app" + (!w.minimized && w.element.classList.contains("focused") ? " active" : "");
@@ -137,14 +137,18 @@ export function mountDesktop(root) {
         launcher.hidden = true;
         const existing = windows.get(id);
         if (existing) {
+            const resuming = existing.parked;
+            existing.parked = false;
             existing.minimized = false;
             display(existing);
             focused(existing);
+            if (resuming)
+                existing.element.dispatchEvent(new Event("kingdomos:window-resumed"));
             store();
             return;
         }
         const app = getApp(id), preset = layouts[id], shift = windows.size * 26;
-        const w = { id, x: preset?.x ?? (id === "overview" ? 650 + shift : 75 + shift), y: preset?.y ?? (id === "overview" ? 108 : 65 + shift), w: preset?.w ?? app.width, h: preset?.h ?? app.height, maximized: false, minimized: false, z: ++order, element: document.createElement("section") };
+        const w = { id, x: preset?.x ?? (id === "overview" ? 650 + shift : 75 + shift), y: preset?.y ?? (id === "overview" ? 108 : 65 + shift), w: preset?.w ?? app.width, h: preset?.h ?? app.height, maximized: false, minimized: false, z: ++order, element: document.createElement("section"), parked: false };
         const element = w.element;
         element.className = "os-window";
         element.setAttribute("role", "dialog");
@@ -221,10 +225,21 @@ export function mountDesktop(root) {
         const w = windows.get(id);
         if (!w)
             return;
-        w.dispose?.();
-        windows.delete(id);
-        w.element.remove();
-        const next = [...windows.values()].filter(other => !other.minimized).sort((a, b) => b.z - a.z)[0];
+        if (getApp(id).keepAliveOnClose) {
+            // Closing the editor hides the OS window but keeps its iframe and in-memory
+            // Azgaar state intact. Reopening restores the exact same editing session.
+            w.parked = true;
+            w.minimized = false;
+            w.element.classList.remove("focused");
+            display(w);
+            w.element.dispatchEvent(new Event("kingdomos:window-parked"));
+        }
+        else {
+            w.dispose?.();
+            windows.delete(id);
+            w.element.remove();
+        }
+        const next = [...windows.values()].filter(other => !other.minimized && !other.parked).sort((a, b) => b.z - a.z)[0];
         if (next)
             focused(next);
         else
@@ -293,7 +308,7 @@ export function mountDesktop(root) {
             root.querySelector("#dock-menu")?.focus();
             return;
         }
-        const active = [...windows.values()].filter(w => !w.minimized).sort((a, b) => b.z - a.z)[0];
+        const active = [...windows.values()].filter(w => !w.minimized && !w.parked).sort((a, b) => b.z - a.z)[0];
         if (modifier && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "w" && active) {
             e.preventDefault();
             closeWindow(active.id);
