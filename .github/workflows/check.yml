@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: MrEktidd/Azgaar-map
-          ref: 750fe346f7554767c51ece7ae18939f0dd24e4d3
+          ref: fff9d6039fdf881ebc6ab3536e35c368ef10f71a
           path: .azgaar
           persist-credentials: false
       - name: Build complete Azgaar editor

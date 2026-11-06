@@ -208,7 +208,9 @@ function mountAtlas(host:HTMLElement,ctx:Context):()=>void {
   }
   const stopWorld=subscribeCurrentWorld(()=>schedule(refresh));
   const windowEl=host.closest(".os-window");
-  const onResume=()=>{if(session)void session.fit().catch(()=>{});};
+  // Parking retains the iframe and its D3 camera. Do not call fitMapToScreen
+  // on resume, as that would reset the player's zoom and browsing position.
+  const onResume=()=>{updateStatus();};
   windowEl?.addEventListener("kingdomos:window-resumed",onResume);
   schedule(refresh);
   return ()=>{
