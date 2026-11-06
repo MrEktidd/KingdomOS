@@ -18,7 +18,7 @@ export interface WorldSummary {
 }
 export interface WorldSnapshot { summary:WorldSummary; mapText:string }
 export interface WorldCapture extends WorldSnapshot {preview:Blob}
-type Command = "summary"|"snapshot"|"capture"|"import-map"|"new-map";
+type Command = "summary"|"snapshot"|"capture"|"import-map"|"new-map"|"fit";
 type Listener=()=>void;
 type Pending={resolve:(value:unknown)=>void;reject:(error:Error)=>void;timeout:ReturnType<typeof setTimeout>};
 type State="disconnected"|"connecting"|"ready";
