@@ -8,6 +8,20 @@
 
 KingdomOS is a sandbox project where players can generate, import, edit and eventually simulate entire worlds. The full map editor is the familiar **Azgaar's Fantasy Map Generator**, included directly inside the KingdomOS desktop and compiled from the separate [Azgaar-map fork](https://github.com/MrEktidd/Azgaar-map).
 
+## v0.0.3.3 — Native Interactive World Atlas
+
+The Atlas now runs a **second, browse-only instance of the complete Azgaar map renderer**, rather than scaling an exported map image. It offers true native SVG zoom and detail, map navigation, labels, Layers, Style, About, and tooltips.
+
+- **World Editor:** keeps Options, Tools, regeneration, file import/export, manual edits and full worldbuilding.
+- **World Atlas:** keeps Layers, Style and About. Options, Tools, map regeneration, native Save/Load, command search, destructive shortcuts and editing interactions are disabled.
+- **Exact active world:** loads the published native `.map` from IndexedDB rather than regenerating from a seed. New editor publications update the Atlas.
+- **Independent browsing:** Atlas and Editor keep separate viewports and panel controls. Atlas style changes do not overwrite published world data.
+- **Lean publishing:** new active worlds no longer need full-map SVG exports; legacy saved previews remain valid.
+- **Window preservation:** closing and reopening Atlas in the same tab keeps its renderer and browsing position.
+- **Regression coverage:** responsive UI tests and real native Azgaar map loading.
+
+**Limits:** A different map publication currently resets Atlas layer/style presentation. True semantic entity selection and simulation are work for v0.0.4 and beyond. Browsing mode restricts UI features but is not a security boundary against arbitrary scripts.
+
 ## v0.0.3.2 — Interface & Experience Overhaul
 
 - **Atlas toolbar repaired:** replaced fixed-width legacy icon rules with responsive, content-sized groups and an overflow menu. Tested at desktop and narrow-window sizes.

@@ -10,7 +10,8 @@ test("World Hub and full World Editor self-register through the app registry",as
   assert.equal(editor.maximizeOnOpen,true);
   assert.equal(editor.keepAliveOnClose,true);
   await import("../dist/apps/atlas.js");
-  assert.equal(getApp("atlas").description,"Explore the active world map");
+  assert.equal(getApp("atlas").description,"Interactive Azgaar map, Layers and Style");
+  assert.equal(getApp("atlas").keepAliveOnClose,true);
   assert.equal(typeof editor.render,"function");
 });
 

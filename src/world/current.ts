@@ -64,15 +64,17 @@ export async function saveEditorDraft(world:WorldSnapshot,name?:string):Promise<
   await operation<IDBValidKey>("readwrite",store=>store.put(doc));
   notify();return doc;
 }
-export async function publishActiveWorld(world:WorldCapture,name?:string):Promise<StoredWorld> {
+export async function publishActiveWorld(world:WorldSnapshot & {preview?:Blob},name?:string):Promise<StoredWorld> {
   checkNative(world.mapText);
-  if(!(world.preview instanceof Blob)||world.preview.size===0||world.preview.type.split(";")[0]!=="image/svg+xml") {
+  // Legacy active worlds retain their SVG previews, but native Atlas rendering
+  // no longer needs an exported image when publishing new maps.
+  if(world.preview!==undefined &&
+    (!(world.preview instanceof Blob)||world.preview.size===0||world.preview.type.split(";")[0]!=="image/svg+xml"))
     throw new Error("Azgaar did not provide a valid map illustration.");
-  }
-  if(world.preview.size>80*1024*1024)throw new Error("World preview exceeds the 80 MB limit.");
+  if(world.preview && world.preview.size>80*1024*1024)throw new Error("World preview exceeds the 80 MB limit.");
   const doc:StoredWorld={
     slot:"active",name:name?.trim()||"World "+world.summary.seed,
-    mapText:world.mapText,summary:world.summary,preview:world.preview,savedAt:Date.now()
+    mapText:world.mapText,summary:world.summary,preview:world.preview??null,savedAt:Date.now()
   };
   // A publish is a single committed snapshot. Keep an earlier recovery draft
   // until after this write succeeds, then clear it to avoid duplicating large maps.
