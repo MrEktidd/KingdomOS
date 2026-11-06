@@ -46,8 +46,8 @@ jobs:
           test -s dist/main.js
           test -s dist/world-editor/index.html
           grep -q '/KingdomOS/dist/world-editor/' dist/world-editor/index.html
-      - name: Install Chromium for visual regression checks
-        run: npx playwright install --with-deps chromium
+      - name: Confirm preinstalled Chrome
+        run: google-chrome --version
       - name: Browser and responsive layout tests
         env:
           CI: 'true'
