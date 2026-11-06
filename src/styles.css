@@ -378,3 +378,6 @@ small,.muted{color:var(--ko-muted)}
   .atlas-real-status>span:last-child{display:none}
 }
 @media(prefers-reduced-motion:reduce){.atlas-live-image{transition:none}}
+
+/* Park heavy map editors without removing their layout or unloading their iframe. */
+.os-window.parked{visibility:hidden;pointer-events:none}
