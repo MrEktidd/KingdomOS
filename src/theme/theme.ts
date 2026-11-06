@@ -168,3 +168,14 @@ export function importTheme(text:string):Theme {
   const s=current();if(s.custom.length>=80) throw new Error("Maximum of 80 personal themes reached.");
   s.custom.push(theme);s.active=copy(theme);notify();return copy(theme);
 }
+
+/** True when the active theme differs from its last saved preset. */
+export function isThemeModified():boolean {
+  const active=getActiveTheme(),saved=getAllThemes().find(t=>t.id===active.id);
+  return !saved || JSON.stringify(active)!==JSON.stringify(saved);
+}
+/** Discard unsaved edits while leaving the saved preset untouched. */
+export function resetTheme():void {
+  const saved=getAllThemes().find(t=>t.id===current().active.id);
+  current().active=copy(saved||DEFAULT_THEME);notify();
+}

@@ -1,14 +1,12 @@
 import {icon} from "../ui/icons.js";
-import {BUILTIN_THEMES,COLOR_KEYS,getAllThemes,getCustomThemes,getActiveTheme,selectTheme,patchTheme,patchThemeColor,saveTheme,updateSavedTheme,deleteSavedTheme,importTheme,exportTheme,type ColorKey,type Theme} from "../theme/theme.js";
+import {BUILTIN_THEMES,COLOR_KEYS,getAllThemes,getCustomThemes,getActiveTheme,selectTheme,patchTheme,patchThemeColor,saveTheme,updateSavedTheme,deleteSavedTheme,importTheme,exportTheme,isThemeModified,resetTheme,type ColorKey,type Theme} from "../theme/theme.js";
 
-export type AppId="atlas"|"overview"|"appearance"|"about";
-export interface Context {open(id:AppId):void;toast(s:string):void}
-export interface AppSpec {id:AppId;title:string;icon:string;description:string;width:number;height:number;render(host:HTMLElement,ctx:Context):void}
+import {registerApp, type AppSpec, type Context} from "./registry.js";
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,cls="",value?:string):HTMLElementTagNameMap[K] {const e=document.createElement(tag);e.className=cls;if(value!==undefined)e.textContent=value;return e;}
 function button(label:string,ico:string,fn:()=>void,extra=""):HTMLButtonElement {const b=el("button","btn "+extra);b.type="button";b.innerHTML=icon(ico,15)+"<span></span>";b.querySelector("span")!.textContent=label;b.addEventListener("click",fn);return b;}
 const section=(title:string,help="")=>{const d=el("div","section-title");d.append(el("strong","eyebrow",title),el("small","muted",help));return d;};
 function overview(host:HTMLElement,ctx:Context):void {
- host.className="overview-app";host.innerHTML='<div class="hero"><div class="eyebrow">'+icon("spark",14)+' KINGDOMOS / FOUNDATION 0.0.1</div><h1>A world, awaiting<br><em>your command.</em></h1><p>Your command environment is online. Shape the workspace that will one day govern a living world.</p></div><div class="heading"><span>PLATFORM STATUS</span><small>INITIALIZATION COMPLETE</small></div><div class="status-grid"><div><i class="pip on"></i><span>Desktop shell</span><b>ONLINE</b></div><div><i class="pip on"></i><span>Theme service</span><b>ONLINE</b></div><div><i class="pip off"></i><span>World simulation</span><b>PLANNED</b></div><div><i class="pip off"></i><span>Generator adapter</span><b>PLANNED</b></div></div><div class="heading"><span>QUICK ACCESS</span><small>APPLICATIONS</small></div>';
+ host.className="overview-app";host.innerHTML='<div class="hero"><div class="eyebrow">'+icon("spark",14)+' KINGDOMOS / FOUNDATION 0.0.2</div><h1>A world, awaiting<br><em>your command.</em></h1><p>Your command environment is online. Shape the workspace that will one day govern a living world.</p></div><div class="heading"><span>PLATFORM STATUS</span><small>INITIALIZATION COMPLETE</small></div><div class="status-grid"><div><i class="pip on"></i><span>Desktop shell</span><b>ONLINE</b></div><div><i class="pip on"></i><span>Theme service</span><b>ONLINE</b></div><div><i class="pip off"></i><span>World simulation</span><b>PLANNED</b></div><div><i class="pip off"></i><span>Generator adapter</span><b>PLANNED</b></div></div><div class="heading"><span>QUICK ACCESS</span><small>APPLICATIONS</small></div>';
  const actions=el("div","actions");actions.append(button("World Atlas","globe",()=>ctx.open("atlas"),"accent"),button("Personalize OS","palette",()=>ctx.open("appearance")));host.append(actions);
  const note=el("div","notice");note.innerHTML=icon("info",17)+"<p>This is a <b>foundation prototype.</b> The Atlas shows illustrative cartography. No world generation, economy, or gameplay simulation is connected yet.</p>";host.append(note);
 }
@@ -58,6 +56,7 @@ function appearance(host:HTMLElement,ctx:Context):void {
        b.addEventListener("click",()=>safe(()=>{selectTheme(p.id);draw();}));grid.append(b);
      });body.append(grid,section("PERSONAL LIBRARY","Built-in presets remain unchanged"));
      const actions=el("div","actions");
+     if(isThemeModified())actions.append(button("Revert edits","close",()=>safe(()=>{resetTheme();draw();ctx.toast("Changes reverted to the saved preset.");})));
      actions.append(button("Save as new","plus",()=>{const name=prompt("Name this preset:",t.name+" Custom");if(name!==null)safe(()=>{saveTheme(name);ctx.toast("Theme saved locally.");draw();});},"accent"));
      if(getCustomThemes().some(p=>p.id===t.id)){
        actions.append(button("Update preset","save",()=>safe(()=>{updateSavedTheme();draw();ctx.toast("Preset updated.");})));
@@ -111,12 +110,12 @@ function appearance(host:HTMLElement,ctx:Context):void {
  draw();
 }
 function about(host:HTMLElement):void{
- host.className="about-app";host.innerHTML='<div class="about-logo">'+icon("crown",48)+'</div><span class="eyebrow">KINGDOM OPERATING SYSTEM</span><h1>KingdomOS</h1><strong>FOUNDATION RELEASE 0.0.1</strong><hr/><p>An evolving operating environment for an autonomous kingdom simulator.</p><p>This release establishes the visual foundation, window manager, and customizable theme engine. Gameplay simulation and map integration will follow.</p>';
+ host.className="about-app";host.innerHTML='<div class="about-logo">'+icon("crown",48)+'</div><span class="eyebrow">KINGDOM OPERATING SYSTEM</span><h1>KingdomOS</h1><strong>FOUNDATION RELEASE 0.0.2</strong><hr/><p>An evolving operating environment for an autonomous kingdom simulator.</p><p>This release establishes the visual foundation, window manager, and customizable theme engine. Gameplay simulation and map integration will follow.</p>';
 }
-export const APPS:AppSpec[]=[
+const BUILTIN_APPS:AppSpec[]=[
  {id:"atlas",title:"World Atlas",icon:"globe",description:"Explore the map",width:875,height:605,render:atlas},
  {id:"overview",title:"Command Overview",icon:"grid",description:"System status",width:448,height:555,render:overview},
  {id:"appearance",title:"Appearance",icon:"palette",description:"Themes and settings",width:700,height:635,render:appearance},
  {id:"about",title:"About KingdomOS",icon:"info",description:"Foundation release details",width:420,height:450,render:about}
 ];
-export function getApp(id:AppId):AppSpec {return APPS.find(a=>a.id===id)!;}
+for (const app of BUILTIN_APPS) registerApp(app);

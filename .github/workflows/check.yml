@@ -1,9 +1,17 @@
-name: Typecheck
+name: Build and verify
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - 'dist/**'
   pull_request:
+permissions:
+  contents: write
+concurrency:
+  group: kingdomos-main-build
+  cancel-in-progress: true
 jobs:
-  check:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -11,5 +19,14 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
-      - run: npm run check
-      - run: npm run build
+      - run: npm test
+      # Pages is currently configured to publish from main / (root).
+      # TypeScript output must be committed, not only uploaded as an artifact.
+      - name: Publish compiled modules for branch-based GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git add -f dist
+          if ! git diff --cached --quiet; then
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "build: refresh static Pages modules [skip ci]"
+            git push origin HEAD:main
+          fi
