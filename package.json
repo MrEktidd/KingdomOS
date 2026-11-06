@@ -1,0 +1,16 @@
+{
+  "name": "kingdom-os",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "KingdomOS desktop foundation",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "start": "node scripts/serve.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
