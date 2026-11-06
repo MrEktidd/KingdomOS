@@ -32,14 +32,14 @@ test("desktop session can persist and recover a layout and an empty workspace",a
   const data=new Map();
   globalThis.localStorage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
   const {loadSession,saveSession,resetSession}=await import("../dist/desktop/session.js");
-  let session=loadSession();assert.deepEqual(session.open,["atlas","overview"]);
+  let session=loadSession();assert.deepEqual(session.open,["world-hub","overview"]);
   const state={version:2,windows:{atlas:{x:12,y:22,w:650,h:470,minimized:false,maximized:false}},open:["atlas"],active:"atlas"};
   saveSession(state);session=loadSession();
   assert.deepEqual(session.open,["atlas"]);assert.equal(session.windows.atlas.w,650);
   saveSession({...state,open:[],active:null,windows:{}});
   assert.deepEqual(loadSession().open,[]);
   resetSession();
-  assert.deepEqual(loadSession().open,["atlas","overview"]);
+  assert.deepEqual(loadSession().open,["world-hub","overview"]);
 });
 
 test("appearance validates imports and supports reversible customizations",async()=>{

@@ -11,6 +11,7 @@ export interface AppSpec {
   description: string;
   width: number;
   height: number;
+  maximizeOnOpen?: boolean;
   render(host: HTMLElement, context: Context): void | (() => void);
 }
 type Listener = () => void;

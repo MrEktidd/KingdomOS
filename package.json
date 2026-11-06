@@ -1,6 +1,6 @@
 {
   "name": "kingdom-os",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "type": "module",
   "description": "KingdomOS desktop, modular apps, and appearance foundation",

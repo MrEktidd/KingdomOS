@@ -17,16 +17,40 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - run: npm install
-      - run: npm test
-      # Pages is currently configured to publish from main / (root).
-      # TypeScript output must be committed, not only uploaded as an artifact.
-      - name: Publish compiled modules for branch-based GitHub Pages
+          node-version: '24'
+      - name: Verify KingdomOS
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+      # Pin the fork so upstream changes cannot silently break gameplay integration.
+      # The fork remains a separate repo and can be updated independently.
+      - uses: actions/checkout@v4
+        with:
+          repository: MrEktidd/Azgaar-map
+          ref: 3fda542b6ee59ec8c586afb467eaf07c4e14cf43
+          path: .azgaar
+          persist-credentials: false
+      - name: Build complete Azgaar editor
+        working-directory: .azgaar
+        env:
+          KINGDOMOS_BASE: /KingdomOS/dist/world-editor/
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
+      - name: Bundle Azgaar as a first-party hosted app
+        run: |
+          mkdir -p dist/world-editor
+          cp -a .azgaar/dist/. dist/world-editor/
+          if [ -f .azgaar/LICENSE ]; then cp .azgaar/LICENSE dist/world-editor/LICENSE.txt; fi
+          test -s dist/main.js
+          test -s dist/world-editor/index.html
+          grep -q '/KingdomOS/dist/world-editor/' dist/world-editor/index.html
+      - name: Publish compiled assets for branch-based Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           git add -f dist
           if ! git diff --cached --quiet; then
-            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "build: refresh static Pages modules [skip ci]"
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "build: bundle KingdomOS and pinned Azgaar World Editor [skip ci]"
             git push origin HEAD:main
           fi

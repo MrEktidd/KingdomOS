@@ -17,7 +17,7 @@ const isLayout=(v:unknown):v is Layout => {
     && typeof v.minimized==="boolean" && typeof v.maximized==="boolean";
 };
 export function loadSession():Session {
-  const fallback:Session={version:2,windows:{},open:["atlas","overview"],active:"overview"};
+  const fallback:Session={version:2,windows:{},open:["world-hub","overview"],active:"world-hub"};
   try {
     const raw=localStorage.getItem(KEY);
     if (raw) {

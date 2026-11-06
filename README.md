@@ -1,106 +1,91 @@
 # KingdomOS
 
-**A living-world kingdom simulation presented as a modular, customizable desktop operating system.**
+**A living-world kingdom simulation and worldbuilding desktop, built around full creative freedom.**
 
-### [Launch KingdomOS — Live demo](https://mrektidd.github.io/KingdomOS/)
+### [Launch KingdomOS — live web app](https://mrektidd.github.io/KingdomOS/)
 
-[Source code](https://github.com/MrEktidd/KingdomOS) · [v0.0.2 release notes](docs/release-0.0.2.md)
+[Source code](https://github.com/MrEktidd/KingdomOS) · [World integration design](docs/world-integration.md)
 
-KingdomOS is in its foundation stage. The longer-term goal is to let players found a kingdom on an unclaimed world, or observe and influence an autonomous world of competing states, using the same persistent simulation.
+KingdomOS is a sandbox project where players can generate, import, edit and eventually simulate entire worlds. The full map editor is the familiar **Azgaar's Fantasy Map Generator**, included directly inside the KingdomOS desktop and compiled from the separate [Azgaar-map fork](https://github.com/MrEktidd/Azgaar-map).
 
-## Current milestone: v0.0.2 — Desktop polish and application framework
+## v0.0.3 — The Worldbuilding Foundation
 
-- Premium desktop with taskbar, dock, multi-window environment and **searchable application launcher**.
-- Draggable and resizable windows, minimize/maximize, restore previous workspace and keep user window positions.
-- Keyboard shortcuts for launching apps, moving and resizing windows, closing windows and navigating the launcher.
-- Independent **theme service** with five presets, live color editing, opacity, radius, scaling, density and wallpaper controls.
-- Personal theme saving, editing, reset, deletion, and validated versioned JSON import/export.
-- Extensible application manifests in the independent `src/apps/registry.ts`; UI apps register without changes to the desktop.
-- Keyboard Shortcuts help application, Command Overview, Appearance and World Atlas concept viewer.
-- Versioned browser-local desktop session storage separate from any future game save.
+- **World Hub:** a dedicated launcher for creating, importing, loading and managing maps.
+- **Full World Editor:** the original Azgaar application embedded in a maximizable KingdomOS window. Its native layers, tools, generation, military, terrain, political editing and file operations are preserved.
+- **Native .map and .gz import:** load existing Azgaar projects into the full editor.
+- **World Library:** store unmodified imported files or newly captured editor snapshots locally in IndexedDB, with open/export/delete support.
+- **Native .map snapshots:** capture the complete editor state through a versioned bridge. Download an editable native project from KingdomOS.
+- **Cross-application bridge:** same-origin `postMessage` with strict source/version checks and explicit commands (summary, import, snapshot and new map).
+- **Separate upstream fork:** Azgaar is built during CI from a pinned commit; no generator code has been copied into the KingdomOS source tree.
+- **Full creative freedom:** retain the existing editor’s ability to modify the world without arbitrary KingdomOS restrictions.
 
-**This is still a foundation prototype, not a playable kingdom game.** The Atlas is currently illustrative; it is not generating a world from Azgaar yet.
+**Important:** The World Editor is real, but **the KingdomOS simulation engine does not exist yet**. World-edit reconciliation, a dedicated gameplay Atlas, SettleMaker integration, and true frontier-world generation are subsequent milestones. The pre-existing World Atlas is still a clearly labeled illustrative prototype.
 
-## Live GitHub Pages
+## Live application
 
 **[https://mrektidd.github.io/KingdomOS/](https://mrektidd.github.io/KingdomOS/)**
 
-The app is deployed to the `/KingdomOS/` project path, so `index.html` uses **relative asset paths**. The project is currently configured for GitHub Pages publishing from the `main` branch. The build workflow compiles TypeScript to native ES modules in `dist/`, then commits those generated modules so branch-based Pages can serve them.
+The public site is published from `main` on GitHub Pages. The `Build and verify` workflow compiles KingdomOS and the pinned Azgaar fork, then commits static assets into `dist/` for branch-based Pages deployment. The complete editor is served from:
 
-If you later switch Pages **Source** to **GitHub Actions**, update the workflow to upload and deploy the built site rather than committing `dist/` to the branch.
+`/KingdomOS/dist/world-editor/index.html?kingdomos=1`
 
-## Run locally
+The editor build uses the environment variable `KINGDOMOS_BASE` to configure Vite for this path. Standalone builds of the fork retain their original base path.
 
-Node.js 20 or later:
+## Worldbuilding workflow
+
+1. Open **World Hub** from the desktop launcher or dock.
+2. Open **World Editor** to generate a map with Azgaar’s full controls, or choose **Import Existing World** to load your own `.map` or `.gz` project.
+3. Make any desired edits using the original generator interface. You can use its native Save and Load tools as usual.
+4. Use **Save to Library** to keep a native editable snapshot in this browser. Use **Export .map** to download a portable backup.
+5. Return to World Hub to reopen, export or delete saved projects.
+
+The World Library is **browser-local, not cloud storage**. Browser data can be cleared by the user or browser. Export `.map` files as independent backups.
+
+Imported worlds are saved byte-for-byte in the library before the editor's migration/loading process begins. A native editor-side import does not automatically become a library entry; use the KingdomOS toolbar to capture it.
+
+## Development
+
+Requires Node.js 24 or later for the bundled Azgaar Vite build (KingdomOS alone can compile with Node 20+).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:4173](http://localhost:4173).
+Open http://localhost:4173. To run with the full World Editor locally, also build Azgaar using the deployment instructions in [World Integration](docs/world-integration.md). The editor is not installed by `npm install` in the root project.
 
 ```bash
-npm run check    # TypeScript type check
-npm run build    # Compile native ES modules
-npm test         # Check, build and run smoke/behavior tests
+npm test
+npm run build
 ```
-
-There are no production JavaScript runtime dependencies. This keeps the OS shell lightweight and avoids imposing a framework on the independent map generators.
-
-## Desktop controls
-
-| Action | Shortcut |
-| --- | --- |
-| Open app launcher and search | Ctrl / Cmd + K |
-| Appearance settings | Ctrl / Cmd + Shift + A |
-| Keyboard Shortcuts guide | Ctrl / Cmd + Shift + / |
-| Close active OS window | Ctrl / Cmd + W |
-| Move active window | Ctrl + Alt + Arrow |
-| Resize active window | Ctrl + Alt + Shift + Arrow |
-| Dismiss launcher | Escape |
-| Maximize or restore window | Double-click title bar |
-
-Themes auto-save current edits locally. **Save as new** creates a reusable personal preset; **Revert edits** restores the last saved values for the selected preset. Export a theme to a JSON file and import it on another browser using the buttons in Appearance.
 
 ## Architecture
 
 ```
 src/
-  apps/
-    apps.ts              Built-in interactive OS applications
-    registry.ts          Independent app registration and lifecycle contract
-    shortcuts.ts         Keyboard Shortcuts help application
-  desktop/
-    desktop.ts           Desktop, window manager, launcher and taskbar
-    session.ts           Versioned local workspace restoration
-  theme/
-    theme.ts             Theme definitions, validation, persistence and CSS tokens
-  ui/
-    icons.ts             Shared icon rendering
-  main.ts                Register apps, initialize themes, boot desktop
-  styles.css             Global and application styling
-scripts/
-  dev.mjs                TypeScript watch process and local server
-  serve.mjs              Local static server
-tests/
-  foundation.test.mjs    Registry, appearance, session and deploy-path checks
+  apps/                 OS apps, World Hub, full World Editor, appearance and help
+  integration/azgaar.ts Versioned parent-side editor bridge
+  world/library.ts      IndexedDB native-map project library
+  desktop/              Windows, taskbar, launcher and session persistence
+  theme/                Theme engine, saved presets and live design tokens
+  ui/                   Reusable icon renderer
+dist/
+  world-editor/         Generated Azgaar static build (CI-managed, not handwritten)
+docs/
+  world-integration.md  Bridge protocol, constraints, architecture and roadmap
 ```
 
-The window manager is responsible for application presentation; the registry manages app definitions; the theme module owns global appearance tokens. The future simulation must remain independent of all three.
+The simulation will ultimately own its own persistent entity state rather than allowing UI windows or map generators to overwrite it. Every world edit will be legal; future reconciliation will make associated systems respond appropriately.
 
-### Integrations
+## Next development phases
 
-- [Azgaar-map](https://github.com/MrEktidd/Azgaar-map) — world generator, political geography, resource/market foundations.
-- [SettleMaker](https://github.com/MrEktidd/settlemaker) — procedural settlement layouts and local GeoJSON.
+- **v0.0.4 — Shared World Model:** typed world snapshot extraction, stable entity identifiers and edit-impact detection.
+- **v0.0.5 — World Reconciliation:** versioned edits, dependency recalculation and controlled world replacement.
+- **v0.0.6 — Settlement Integration:** SettleMaker inside KingdomOS.
+- **v0.1.0 — Simulation Foundations:** clock, persistent entities and first settlement lifecycle.
 
-The Azgaar fork is MIT-licensed; SettleMaker is GPL-3.0-only. Any eventual embedding, bundling or linked distribution must respect their licenses. Neither is bundled in v0.0.2.
+### Third-party licensing
 
-## Roadmap
+The embedded editor is compiled from [MrEktidd/Azgaar-map](https://github.com/MrEktidd/Azgaar-map), forked from [Azgaar's Fantasy Map Generator](https://github.com/Azgaar/Fantasy-Map-Generator) under the MIT license. The deployment includes the upstream license where provided.
 
-1. **v0.0.3:** Real World Atlas integration with generated and saved Azgaar worlds.
-2. **v0.0.4:** Settlement views through SettleMaker.
-3. **v0.0.5:** Persistent world state, simulation clock, commands and saving.
-4. **v0.1.0:** Found a settlement and construct the first persistent building.
-
-The OS is the interface, not the simulation authority. The same world data must serve all applications.
+[SettleMaker](https://github.com/MrEktidd/settlemaker), planned for later integration, is GPL-3.0-only. Distribution and linking decisions for that component require separate licensing review.
