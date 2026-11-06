@@ -1,4 +1,5 @@
 import { icon } from "../ui/icons.js";
+import { actionButton, confirmAction, promptText } from "../ui/components.js";
 import { registerApp } from "./registry.js";
 import { captureWorld, consumeEditorRecoverySkip, connectEditor, getEditorState, getWorldRevision, getWorldSummary, importMapAndWait, request, snapshot, subscribeEditor, waitUntilBooted } from "../integration/azgaar.js";
 import { loadEditorRecovery, loadWorldSlot, publishActiveWorld, saveEditorDraft } from "../world/current.js";
@@ -9,9 +10,15 @@ function worldEditor(host, ctx) {
     toolbar.className = "world-editor-toolbar";
     const title = document.createElement("div");
     title.className = "world-editor-title";
-    title.innerHTML = icon("globe", 18) + '<div><strong>World Editor</strong><small>AZGAAR FANTASY MAP GENERATOR · FULL EDITION</small></div>';
+    title.innerHTML = icon("globe", 18) + '<div><strong>Azgaar</strong><small>FULL WORLD EDITOR · NATIVE TOOLS</small></div>';
     const status = document.createElement("span");
     status.className = "world-editor-status";
+    const checkpoint = document.createElement("span");
+    checkpoint.className = "world-editor-checkpoint";
+    checkpoint.textContent = "RECOVERY PENDING";
+    checkpoint.dataset.status = "pending";
+    checkpoint.setAttribute("role", "status");
+    checkpoint.setAttribute("aria-live", "polite");
     const buttons = document.createElement("div");
     buttons.className = "world-editor-buttons";
     const input = document.createElement("input");
@@ -29,7 +36,7 @@ function worldEditor(host, ctx) {
     loading.className = "world-editor-loading";
     loading.innerHTML = icon("globe", 27) + '<strong>Preparing your world…</strong><span>Loading Azgaar and checking for your previous editable map.</span>';
     workspace.append(iframe, loading);
-    toolbar.append(title, status, buttons, input);
+    toolbar.append(title, status, checkpoint, buttons, input);
     host.append(toolbar, workspace);
     let disposed = false, parked = false, initializing = true;
     let activeMapId = null, activeSeed = null;
@@ -38,6 +45,12 @@ function worldEditor(host, ctx) {
     let autoSnapshotTimer = null;
     let lastWorldRevision = 0;
     let workQueue = Promise.resolve();
+    function setCheckpoint(label, kind = "pending") {
+        checkpoint.textContent = label;
+        checkpoint.dataset.status = kind;
+        checkpoint.title = kind === "saved" ? "Latest successful local recovery checkpoint" : label;
+    }
+    function checkpointTime() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
     const detach = connectEditor(iframe);
     function linked() {
         const s = getWorldSummary();
@@ -66,6 +79,7 @@ function worldEditor(host, ctx) {
             // A fresh generation or a successful native file load is safe to
             // checkpoint as soon as Azgaar finishes its own registration pipeline.
             if (!initializing && !parked) {
+                setCheckpoint("MAP CHANGED · CHECKPOINT PENDING");
                 if (autoSnapshotTimer)
                     clearTimeout(autoSnapshotTimer);
                 autoSnapshotTimer = setTimeout(() => { void serial(saveDraft).catch(notifyError); }, 1800);
@@ -74,18 +88,13 @@ function worldEditor(host, ctx) {
         renderStatus();
     });
     function button(label, graphic, fn, primary = false) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "editor-button" + (primary ? " editor-primary" : "");
-        b.innerHTML = icon(graphic, 15) + '<span></span>';
-        b.querySelector("span").textContent = label;
-        b.addEventListener("click", fn);
-        return b;
+        return actionButton({ label, icon: graphic, onClick: fn, tone: primary ? "primary" : "default" });
     }
     function notifyError(error) {
         if (disposed)
             return;
-        ctx.toast(error instanceof Error ? error.message : String(error));
+        setCheckpoint("LAST ACTION FAILED", "error");
+        ctx.toast(error instanceof Error ? error.message : String(error), "error");
     }
     function serial(operation) {
         const result = workQueue.then(operation);
@@ -126,9 +135,17 @@ function worldEditor(host, ctx) {
             await startup;
         if (getEditorState() !== "ready")
             return;
-        const current = await snapshot();
-        const name = activeName || "World " + current.summary.seed;
-        await saveEditorDraft(current, name);
+        setCheckpoint("SAVING RECOVERY…", "saving");
+        try {
+            const current = await snapshot();
+            const name = activeName || "World " + current.summary.seed;
+            await saveEditorDraft(current, name);
+            setCheckpoint("RECOVERY SAVED · " + checkpointTime(), "saved");
+        }
+        catch (error) {
+            setCheckpoint("RECOVERY FAILED", "error");
+            throw error;
+        }
     }
     async function publish(openAtlas = false) {
         if (initializing)
@@ -138,7 +155,7 @@ function worldEditor(host, ctx) {
         const capture = await captureWorld();
         const active = await loadWorldSlot("active");
         if (active && (active.summary.mapId !== capture.summary.mapId || active.summary.seed !== capture.summary.seed)) {
-            if (!confirm("Set this map as the active World Atlas? It will replace the previously displayed world, but its original .map backups are unaffected."))
+            if (!await confirmAction("Replace active Atlas world?", "This will publish the editor map, replacing the current Atlas snapshot. Named project backups are not affected."))
                 return;
         }
         const name = active?.summary.mapId === capture.summary.mapId && active.summary.seed === capture.summary.seed
@@ -147,8 +164,9 @@ function worldEditor(host, ctx) {
         activeMapId = capture.summary.mapId;
         activeSeed = capture.summary.seed;
         activeName = name;
+        setCheckpoint("ATLAS PUBLISHED · " + checkpointTime(), "published");
         renderStatus();
-        ctx.toast("The active World Atlas now displays this exact map.");
+        ctx.toast("The active World Atlas now displays this exact map.", "success");
         if (openAtlas)
             ctx.open("atlas");
     }
@@ -163,21 +181,21 @@ function worldEditor(host, ctx) {
         await startup;
         const summary = getWorldSummary();
         const suggested = summary?.seed ? "World " + summary.seed : "My Azgaar World";
-        const name = window.prompt("Name the saved world project:", suggested);
+        const name = await promptText("Save a world project", "This creates a named native .map backup in the browser World Library.", suggested);
         if (name === null)
             return;
         const current = await snapshot();
         const fileName = (name.trim() || suggested).replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").slice(0, 96) + ".map";
         await saveWorld(name, new Blob([current.mapText], { type: "text/plain" }), fileName, "captured", current.summary);
         window.dispatchEvent(new Event("kingdomos:library-changed"));
-        ctx.toast("Editable .map saved to the World Library.");
+        ctx.toast("Editable .map saved to the World Library.", "success");
     })), button("Export .map", "download", () => attempt(async () => {
         await startup;
         const current = await snapshot();
         const fileName = "KingdomOS-" + (current.summary.seed || "world").replace(/[^a-z0-9-_]/gi, "").slice(0, 70) + ".map";
         downloadWorld({ blob: new Blob([current.mapText], { type: "text/plain" }), fileName });
     })), button("World Hub", "map", () => ctx.open("world-hub")));
-    input.addEventListener("change", () => {
+    input.addEventListener("change", async () => {
         const file = input.files?.[0];
         input.value = "";
         if (!file)
@@ -186,7 +204,7 @@ function worldEditor(host, ctx) {
             ctx.toast("Choose a native Azgaar .map or .gz file under 100 MB.");
             return;
         }
-        if (!confirm("Replace the editor's current map with this import? Save any changes you want to keep first."))
+        if (!await confirmAction("Replace editor map?", "The imported map will replace the current Azgaar map. Save your existing edits first if needed."))
             return;
         attempt(async () => {
             await startup;

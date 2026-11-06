@@ -1,18 +1,19 @@
 import { icon } from "../ui/icons.js";
 import { BUILTIN_THEMES, COLOR_KEYS, getAllThemes, getCustomThemes, getActiveTheme, selectTheme, patchTheme, patchThemeColor, saveTheme, updateSavedTheme, deleteSavedTheme, importTheme, exportTheme, isThemeModified, resetTheme } from "../theme/theme.js";
 import { registerApp } from "./registry.js";
+import { actionButton } from "../ui/components.js";
 function el(tag, cls = "", value) { const e = document.createElement(tag); e.className = cls; if (value !== undefined)
     e.textContent = value; return e; }
-function button(label, ico, fn, extra = "") { const b = el("button", "btn " + extra); b.type = "button"; b.innerHTML = icon(ico, 15) + "<span></span>"; b.querySelector("span").textContent = label; b.addEventListener("click", fn); return b; }
+function button(label, ico, fn, extra = "") { return actionButton({ label, icon: ico, onClick: fn, tone: extra === "accent" ? "primary" : "default" }); }
 const section = (title, help = "") => { const d = el("div", "section-title"); d.append(el("strong", "eyebrow", title), el("small", "muted", help)); return d; };
 function overview(host, ctx) {
     host.className = "overview-app";
-    host.innerHTML = '<div class="hero"><div class="eyebrow">' + icon("spark", 14) + ' KINGDOMOS / FOUNDATION 0.0.3.1</div><h1>A world, awaiting<br><em>your command.</em></h1><p>Your command environment is online. Shape the workspace that will one day govern a living world.</p></div><div class="heading"><span>PLATFORM STATUS</span><small>INITIALIZATION COMPLETE</small></div><div class="status-grid"><div><i class="pip on"></i><span>Desktop shell</span><b>ONLINE</b></div><div><i class="pip on"></i><span>Theme service</span><b>ONLINE</b></div><div><i class="pip off"></i><span>World simulation</span><b>PLANNED</b></div><div><i class="pip off"></i><span>Generator adapter</span><b>PLANNED</b></div></div><div class="heading"><span>QUICK ACCESS</span><small>APPLICATIONS</small></div>';
+    host.innerHTML = '<div class="hero"><div class="eyebrow">' + icon("spark", 14) + ' KINGDOMOS / FOUNDATION 0.0.3.2</div><h1>A world, awaiting<br><em>your command.</em></h1><p>Your command environment is online. Shape the workspace that will one day govern a living world.</p></div><div class="heading"><span>PLATFORM STATUS</span><small>INITIALIZATION COMPLETE</small></div><div class="status-grid"><div><i class="pip on"></i><span>Desktop shell</span><b>ONLINE</b></div><div><i class="pip on"></i><span>Theme service</span><b>ONLINE</b></div><div><i class="pip off"></i><span>World simulation</span><b>PLANNED</b></div><div><i class="pip on"></i><span>Azgaar integration</span><b>ONLINE</b></div></div><div class="heading"><span>QUICK ACCESS</span><small>APPLICATIONS</small></div>';
     const actions = el("div", "actions");
     actions.append(button("World Hub", "map", () => ctx.open("world-hub"), "accent"), button("Personalize OS", "palette", () => ctx.open("appearance")));
     host.append(actions);
     const note = el("div", "notice");
-    note.innerHTML = icon("info", 17) + "<p>The <b>World Editor</b> now includes the full Azgaar map generator. The separate World Atlas remains an illustrative prototype; gameplay simulation is not connected yet.</p>";
+    note.innerHTML = icon("info", 17) + "<p>The <b>World Editor</b> includes the complete Azgaar generator. The Atlas displays a real published world, with map navigation and editing handoff. Gameplay simulation is not yet implemented.</p>";
     host.append(note);
 }
 const colorNames = { background: "Desktop background", surface: "Window surface", surfaceRaised: "Raised surface", surfaceInset: "Inset surface", border: "Borders", text: "Primary text", muted: "Secondary text", accent: "Accent", accentText: "Accent text", success: "Success", warning: "Warning", danger: "Danger", mapSea: "Map water", mapLand: "Map terrain" };
@@ -152,7 +153,7 @@ function appearance(host, ctx) {
 }
 function about(host) {
     host.className = "about-app";
-    host.innerHTML = '<div class="about-logo">' + icon("crown", 48) + '</div><span class="eyebrow">KINGDOM OPERATING SYSTEM</span><h1>KingdomOS</h1><strong>FOUNDATION RELEASE 0.0.3.1</strong><hr/><p>An evolving operating environment for an autonomous kingdom simulator.</p><p>This release adds the full Azgaar World Editor, native map imports and exports, a local World Library, and a versioned communication bridge. Game simulation is not yet implemented.</p>';
+    host.innerHTML = '<div class="about-logo">' + icon("crown", 48) + '</div><span class="eyebrow">KINGDOM OPERATING SYSTEM</span><h1>KingdomOS</h1><strong>FOUNDATION RELEASE 0.0.3.2</strong><hr/><p>An evolving operating environment for an autonomous kingdom simulator.</p><p>This release refines the shared OS interface, improves Atlas map navigation, introduces world status and notification history, and makes world editing and saving clearer. The simulation engine is not yet implemented.</p>';
 }
 const BUILTIN_APPS = [
     { id: "overview", title: "Command Overview", icon: "grid", description: "System status", width: 448, height: 555, render: overview },

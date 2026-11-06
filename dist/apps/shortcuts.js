@@ -8,7 +8,10 @@ const shortcuts = [
     ["Ctrl + Alt + Arrow", "Move the active window by 20 pixels"],
     ["Ctrl + Alt + Shift + Arrow", "Resize the active window by 20 pixels"],
     ["Escape", "Dismiss the launcher"],
-    ["Double-click title bar", "Maximize or restore a window"]
+    ["Double-click title bar", "Maximize or restore a window"],
+    ["Atlas: Mouse wheel", "Zoom the map toward the pointer"],
+    ["Atlas: Drag", "Pan across the map"],
+    ["Atlas: 0 / Home", "Fit the entire map to its window"]
 ];
 registerApp({
     id: "shortcuts",

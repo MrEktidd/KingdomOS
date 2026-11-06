@@ -84,6 +84,19 @@ export async function publishActiveWorld(world, name) {
     notify();
     return doc;
 }
+/** Rename the published world without altering its native map, preview, or identity. */
+export async function renameActiveWorld(name) {
+    const label = name.trim();
+    if (!label || label.length > 100)
+        throw new Error("World name must be between 1 and 100 characters.");
+    const original = await loadWorldSlot("active");
+    if (!original)
+        throw new Error("No active world is published yet.");
+    const updated = { ...original, name: label };
+    await operation("readwrite", store => store.put(updated));
+    notify();
+    return updated;
+}
 export async function removeWorldSlot(slot) {
     await operation("readwrite", store => store.delete(slot));
     notify();
