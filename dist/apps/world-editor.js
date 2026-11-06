@@ -1,7 +1,7 @@
 import { icon } from "../ui/icons.js";
 import { actionButton, confirmAction, promptText } from "../ui/components.js";
 import { registerApp } from "./registry.js";
-import { captureWorld, consumeEditorRecoverySkip, connectEditor, getEditorState, getWorldRevision, getWorldSummary, importMapAndWait, request, snapshot, subscribeEditor, waitUntilBooted } from "../integration/azgaar.js";
+import { consumeEditorRecoverySkip, connectEditor, getEditorState, getWorldRevision, getWorldSummary, importMapAndWait, request, snapshot, subscribeEditor, waitUntilBooted } from "../integration/azgaar.js";
 import { loadEditorRecovery, loadWorldSlot, publishActiveWorld, saveEditorDraft } from "../world/current.js";
 import { downloadWorld, fileLabel, saveWorld } from "../world/library.js";
 function worldEditor(host, ctx) {
@@ -152,7 +152,8 @@ function worldEditor(host, ctx) {
             await startup;
         if (getEditorState() !== "ready")
             throw new Error("World Editor is not connected.");
-        const capture = await captureWorld();
+        // A native Atlas can render the editable .map directly. No flattened SVG export needed.
+        const capture = await snapshot();
         const active = await loadWorldSlot("active");
         if (active && (active.summary.mapId !== capture.summary.mapId || active.summary.seed !== capture.summary.seed)) {
             if (!await confirmAction("Replace active Atlas world?", "This will publish the editor map, replacing the current Atlas snapshot. Named project backups are not affected."))

@@ -1,343 +1,285 @@
 import { icon } from "../ui/icons.js";
 import { actionButton, actionMenu, confirmAction, disposeActionMenu, promptText, statusChip, toolbarGroup } from "../ui/components.js";
-import { cameraTransform, fitCamera, panBy, zoomAt } from "../ui/map-camera.js";
 import { registerApp } from "./registry.js";
-import { captureWorld, getEditorState, getWorldSummary, importMapAndWait, skipEditorRecoveryOnce } from "../integration/azgaar.js";
+import { NativeAtlasSession } from "../integration/native-atlas.js";
+import { getEditorState, getWorldSummary, importMapAndWait, skipEditorRecoveryOnce, snapshot } from "../integration/azgaar.js";
 import { loadWorldSlot, publishActiveWorld, renameActiveWorld, subscribeCurrentWorld, worldMapBlob } from "../world/current.js";
-/** The real Atlas is an intentionally inert visual preview of the active native Azgaar project. */
+/**
+ * The Atlas uses Azgaar's actual renderer and navigation stack.
+ * Only its parent toolbar and status chrome belong to KingdomOS.
+ * No exported SVG image or second pan/zoom implementation is used.
+ */
 function mountAtlas(host, ctx) {
-    host.className = "atlas-app atlas-real atlas-v2";
-    const top = document.createElement("header");
-    top.className = "atlas-v2-header";
-    const project = document.createElement("div");
-    project.className = "atlas-v2-project";
-    const eyebrow = document.createElement("span");
-    eyebrow.className = "eyebrow";
-    eyebrow.textContent = "ACTIVE WORLD / CARTOGRAPHY";
-    const heading = document.createElement("strong");
-    heading.className = "atlas-v2-project-name";
-    heading.textContent = "No active world";
-    project.append(eyebrow, heading);
-    const buttons = document.createElement("div");
-    buttons.className = "atlas-v2-toolbar";
-    const viewport = document.createElement("div");
-    viewport.className = "atlas-viewport atlas-v2-viewport";
-    viewport.tabIndex = 0;
-    viewport.setAttribute("role", "region");
-    viewport.setAttribute("aria-label", "Interactive world map: drag to pan, scroll to zoom, press 0 to fit");
-    const stage = document.createElement("div");
-    stage.className = "atlas-v2-map-stage";
-    const infoPanel = document.createElement("aside");
-    infoPanel.className = "atlas-v2-information";
-    infoPanel.hidden = true;
-    const footer = document.createElement("div");
-    footer.className = "atlas-v2-footer";
-    const leftFooter = document.createElement("span");
-    leftFooter.className = "atlas-v2-footer-state";
-    const rightFooter = document.createElement("span");
-    rightFooter.className = "atlas-v2-footer-details";
-    footer.append(leftFooter, rightFooter);
-    viewport.append(stage, infoPanel);
-    top.append(project, buttons);
-    host.append(top, viewport, footer);
-    let current = null;
-    let imageUrl = null;
-    let camera = fitCamera();
-    let disposed = false, requestNumber = 0, busy = false, pointer = null;
-    let pointerX = 0, pointerY = 0;
-    const zoomReadout = document.createElement("span");
-    zoomReadout.className = "atlas-v2-zoom";
-    zoomReadout.setAttribute("aria-live", "off");
-    function paintCamera() {
-        stage.style.transform = cameraTransform(camera);
-        zoomReadout.textContent = Math.round(camera.zoom * 100) + "%";
+    host.className = "atlas-app atlas-native-app";
+    const toolbar = document.createElement("header");
+    toolbar.className = "atlas-native-header";
+    const title = document.createElement("div");
+    title.className = "atlas-native-title";
+    title.innerHTML = '<span class="eyebrow">ACTIVE WORLD / NATIVE AZGAAR MAP</span>';
+    const name = document.createElement("strong");
+    name.textContent = "No active world";
+    title.append(name);
+    const actions = document.createElement("div");
+    actions.className = "atlas-native-actions";
+    const area = document.createElement("section");
+    area.className = "atlas-native-area";
+    const information = document.createElement("aside");
+    information.className = "atlas-native-info";
+    information.hidden = true;
+    const banner = document.createElement("div");
+    banner.className = "atlas-native-banner";
+    banner.setAttribute("role", "status");
+    const footer = document.createElement("footer");
+    footer.className = "atlas-native-footer";
+    const footerStatus = document.createElement("div");
+    const footerInfo = document.createElement("span");
+    footer.append(footerStatus, footerInfo);
+    area.append(banner, information);
+    toolbar.append(title, actions);
+    host.append(toolbar, area, footer);
+    let active = null;
+    let session = null;
+    let frame = null;
+    let appliedMapText = null;
+    let disposed = false, operation = 0, busy = false;
+    let queue = Promise.resolve();
+    let unsubscribeSession = () => { };
+    function notifyError(message) { ctx.toast(message, "error"); }
+    function schedule(work) {
+        queue = queue.then(work).catch(error => { if (!disposed)
+            notifyError(error instanceof Error ? error.message : String(error)); });
     }
-    function zoom(factor, clientX, clientY) {
-        const rect = viewport.getBoundingClientRect();
-        const x = clientX === undefined ? 0 : clientX - (rect.left + rect.width / 2);
-        const y = clientY === undefined ? 0 : clientY - (rect.top + rect.height / 2);
-        camera = zoomAt(camera, camera.zoom * factor, x, y);
-        paintCamera();
+    function setBusy(next) {
+        busy = next;
+        updateButton.disabled = next;
+        updateButton.querySelector("span").textContent = next ? "Publishing…" : "Update Atlas";
     }
-    function fit() { camera = fitCamera(); paintCamera(); }
-    function setBusy(value) {
-        busy = value;
-        syncButton.disabled = value;
-        syncButton.setAttribute("aria-busy", String(value));
-        syncButton.querySelector("span").textContent = value ? "Updating…" : "Update Atlas";
+    function showBanner(message, kind = "loading") {
+        banner.hidden = false;
+        banner.dataset.state = kind;
+        banner.replaceChildren();
+        const graphic = document.createElement("span");
+        graphic.innerHTML = icon(kind === "error" ? "info" : "globe", 23);
+        const text = document.createElement("span");
+        text.textContent = message;
+        banner.append(graphic, text);
     }
-    async function publish() {
+    function updateStatus() {
+        const state = session?.getState() ?? "closed";
+        if (!active) {
+            footerStatus.replaceChildren(statusChip("No published world", "warning"));
+            return;
+        }
+        const display = state === "loaded" ? "Native map ready" : state === "error" ? "Map load failed" : "Loading native map";
+        footerStatus.replaceChildren(statusChip(display, state === "loaded" ? "success" : state === "error" ? "error" : "neutral"));
+        if (state === "error")
+            showBanner(session?.getError() || "Azgaar failed to load the native project.", "error");
+    }
+    function connect() {
+        if (session)
+            return session;
+        frame = document.createElement("iframe");
+        frame.className = "atlas-native-frame";
+        frame.title = "Azgaar native Atlas: interactive world map, layers, style, and globe";
+        frame.loading = "eager";
+        frame.allow = "fullscreen";
+        frame.setAttribute("aria-label", "Native interactive Azgaar map");
+        // Append before connecting: the native renderer measures its SVG viewport.
+        area.insertBefore(frame, area.firstChild);
+        session = new NativeAtlasSession(frame);
+        unsubscribeSession = session.subscribe(updateStatus);
+        return session;
+    }
+    function disconnect() {
+        unsubscribeSession();
+        unsubscribeSession = () => { };
+        session?.close();
+        session = null;
+        frame?.remove();
+        frame = null;
+        appliedMapText = null;
+    }
+    async function updateAtlasFromEditor() {
         if (busy)
             return;
         if (getEditorState() !== "ready") {
-            ctx.toast("Open the World Editor first. The Atlas can only sync a loaded Azgaar map.");
+            ctx.toast("Open World Editor to publish your changes, then return to Atlas.", "warning");
             ctx.open("world-editor");
             return;
         }
         setBusy(true);
         try {
-            const rendered = await captureWorld();
-            const before = await loadWorldSlot("active");
-            if (before && (before.summary.mapId !== rendered.summary.mapId || before.summary.seed !== rendered.summary.seed)) {
-                if (!await confirmAction("Replace active world?", "This will publish the map currently open in Azgaar. The existing Atlas snapshot will be replaced, but exported and library files remain untouched."))
+            const current = await snapshot();
+            const old = await loadWorldSlot("active");
+            if (old && (old.summary.seed !== current.summary.seed || old.summary.mapId !== current.summary.mapId)) {
+                if (!await confirmAction("Replace the active world?", "This will publish the map open in World Editor. Saved World Library backups are unaffected."))
                     return;
             }
-            const name = before?.summary.mapId === rendered.summary.mapId && before.summary.seed === rendered.summary.seed
-                ? before.name : "World " + rendered.summary.seed;
-            await publishActiveWorld(rendered, name);
-            ctx.toast("Atlas updated with your current editable Azgaar world.");
+            const label = old && old.summary.seed === current.summary.seed && old.summary.mapId === current.summary.mapId
+                ? old.name : "World " + current.summary.seed;
+            await publishActiveWorld(current, label);
+            ctx.toast("World Atlas updated from the editor's native map.", "success");
         }
         catch (error) {
-            ctx.toast("Atlas update failed: " + (error instanceof Error ? error.message : String(error)));
+            notifyError("Atlas update failed: " + (error instanceof Error ? error.message : String(error)));
         }
         finally {
             setBusy(false);
         }
     }
-    async function edit() {
-        const world = current;
-        if (!world) {
+    async function editWorld() {
+        if (!active) {
             ctx.open("world-hub");
             return;
         }
-        const open = getWorldSummary();
-        if (getEditorState() === "ready" && open?.mapId === world.summary.mapId && open.seed === world.summary.seed) {
+        const opening = getWorldSummary();
+        if (getEditorState() === "ready" && opening?.mapId === active.summary.mapId && opening.seed === active.summary.seed) {
             ctx.open("world-editor");
             return;
         }
-        if (getEditorState() === "ready" && !await confirmAction("Open Atlas world for editing?", "This loads the Atlas's published .map into the World Editor and replaces the editor's current map. Make a backup of any unsaved editor changes first."))
+        if (getEditorState() === "ready" && !await confirmAction("Open Atlas world in editor?", "This replaces the current editor map with the published Atlas version. Preserve unsaved editor changes first."))
             return;
         if (getEditorState() !== "ready")
             skipEditorRecoveryOnce();
         ctx.open("world-editor");
         try {
-            await importMapAndWait(worldMapBlob(world), world.name + ".map");
-            ctx.toast("The active Atlas world is ready to edit.");
+            await importMapAndWait(worldMapBlob(active), active.name + ".map");
+            ctx.toast("Active world loaded into the full editor.", "success");
         }
         catch (error) {
-            ctx.toast("Unable to open active world: " + (error instanceof Error ? error.message : String(error)));
+            notifyError("Could not load the Atlas map in World Editor: " + (error instanceof Error ? error.message : String(error)));
         }
     }
     async function rename() {
-        const world = current;
-        if (!world) {
-            ctx.toast("Publish a world before renaming it.");
+        if (!active)
             return;
-        }
-        const proposed = await promptText("Rename world", "This changes the name in KingdomOS without editing the native Azgaar project.", world.name, 100);
-        if (proposed === null || proposed === world.name)
+        const value = await promptText("Rename active world", "Change the displayed world name without altering its native map.", active.name, 100);
+        if (!value || value === active.name)
             return;
         try {
-            await renameActiveWorld(proposed);
-            ctx.toast("World renamed to " + proposed + ".");
+            await renameActiveWorld(value);
+            ctx.toast("World renamed.", "success");
         }
         catch (error) {
-            ctx.toast("Could not rename world: " + (error instanceof Error ? error.message : String(error)));
+            notifyError("World rename failed: " + (error instanceof Error ? error.message : String(error)));
         }
     }
     function exportNative() {
-        const world = current;
-        if (!world) {
-            ctx.toast("There is no active world to export.");
+        if (!active)
             return;
-        }
-        const blob = worldMapBlob(world);
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(worldMapBlob(active));
         const a = document.createElement("a");
         a.href = url;
-        a.download = (world.name.replace(/[^a-z0-9 _-]/gi, "_").slice(0, 70) || "world") + ".map";
+        a.download = (active.name.replace(/[^a-z0-9 _-]/gi, "_").slice(0, 70) || "world") + ".map";
         document.body.append(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 30000);
     }
-    const editButton = actionButton({ label: "Edit world", icon: "pencil", tone: "primary", onClick: () => void edit() });
+    const editButton = actionButton({ label: "Edit world", icon: "pencil", tone: "primary", onClick: () => void editWorld() });
     editButton.dataset.testid = "atlas-edit";
-    const syncButton = actionButton({ label: "Update Atlas", icon: "refresh-cw", onClick: () => void publish() });
-    syncButton.dataset.testid = "atlas-sync";
+    const updateButton = actionButton({ label: "Update Atlas", icon: "refresh-cw", onClick: () => void updateAtlasFromEditor() });
+    updateButton.dataset.testid = "atlas-sync";
+    const infoButton = actionButton({ label: "World information", icon: "info", iconOnly: true, onClick: () => {
+            information.hidden = !information.hidden;
+            infoButton.setAttribute("aria-expanded", String(!information.hidden));
+        } });
+    infoButton.setAttribute("aria-expanded", "false");
     const menu = actionMenu("World actions", [
         { label: "World Hub", icon: "map", onClick: () => ctx.open("world-hub") },
         { label: "Rename world", icon: "pencil", onClick: () => void rename() },
         { label: "Export native .map", icon: "download", onClick: exportNative }
     ]);
-    menu.dataset.testid = "atlas-menu";
-    const minus = actionButton({ label: "Zoom out", icon: "minus", iconOnly: true, onClick: () => zoom(1 / 1.25) });
-    const plus = actionButton({ label: "Zoom in", icon: "plus", iconOnly: true, onClick: () => zoom(1.25) });
-    const fitButton = actionButton({ label: "Fit to window", icon: "maximize", iconOnly: true, onClick: fit });
-    const infoButton = actionButton({ label: "World information", icon: "info", iconOnly: true, onClick: () => {
-            infoPanel.hidden = !infoPanel.hidden;
-            infoButton.setAttribute("aria-expanded", String(!infoPanel.hidden));
-        } });
-    infoButton.setAttribute("aria-expanded", "false");
-    buttons.append(toolbarGroup("World operations", editButton, syncButton, menu), toolbarGroup("Map navigation", minus, zoomReadout, plus, fitButton), toolbarGroup("Information panel", infoButton));
-    function fillInfo(world) {
-        infoPanel.replaceChildren();
-        const top = document.createElement("div");
-        top.className = "atlas-v2-info-head";
-        const label = document.createElement("strong");
-        label.textContent = "World information";
-        const close = actionButton({ label: "Close information", icon: "close", iconOnly: true, onClick: () => {
-                infoPanel.hidden = true;
+    actions.append(toolbarGroup("World actions", editButton, updateButton, menu, infoButton));
+    function info(world) {
+        information.replaceChildren();
+        const heading = document.createElement("strong");
+        heading.textContent = "World information";
+        const close = actionButton({ label: "Close", icon: "close", iconOnly: true, onClick: () => {
+                information.hidden = true;
                 infoButton.setAttribute("aria-expanded", "false");
             } });
-        top.append(label, close);
-        infoPanel.append(top);
-        const fields = [
-            ["Name", world.name],
-            ["Seed", world.summary.seed],
-            ["States", String(world.summary.states)],
-            ["Settlements", String(world.summary.settlements)],
-            ["Map cells", world.summary.cells.toLocaleString()],
-            ["Map size", world.summary.width + " × " + world.summary.height],
-            ["Generator", world.summary.generatorVersion],
-            ["Last published", new Date(world.savedAt).toLocaleString()]
-        ];
+        const top = document.createElement("div");
+        top.className = "atlas-native-info-head";
+        top.append(heading, close);
         const dl = document.createElement("dl");
-        for (const [name, value] of fields) {
+        const fields = [
+            ["World", world.name], ["Seed", world.summary.seed],
+            ["States", String(world.summary.states)], ["Settlements", String(world.summary.settlements)],
+            ["Cells", world.summary.cells.toLocaleString()],
+            ["Dimensions", world.summary.width + " × " + world.summary.height],
+            ["Generator", world.summary.generatorVersion],
+            ["Published", new Date(world.savedAt).toLocaleString()]
+        ];
+        for (const [label, value] of fields) {
             const dt = document.createElement("dt"), dd = document.createElement("dd");
-            dt.textContent = name;
+            dt.textContent = label;
             dd.textContent = value;
             dl.append(dt, dd);
         }
-        infoPanel.append(dl);
-        const notice = document.createElement("p");
-        notice.textContent = "This is a published map snapshot. Edit changes are shown here after updating the Atlas.";
-        infoPanel.append(notice);
-    }
-    function message(text, title) {
-        const empty = document.createElement("div");
-        empty.className = "atlas-v2-empty";
-        const symbol = document.createElement("div");
-        symbol.className = "atlas-v2-empty-icon";
-        symbol.innerHTML = icon("map", 36);
-        const h = document.createElement("h2");
-        h.textContent = title;
-        const p = document.createElement("p");
-        p.textContent = text;
-        empty.append(symbol, h, p, actionButton({ label: "Open World Editor", icon: "globe", tone: "primary", onClick: () => ctx.open("world-editor") }));
-        stage.append(empty);
+        information.append(top, dl);
     }
     async function refresh() {
-        const id = ++requestNumber;
+        const revision = ++operation;
+        const world = await loadWorldSlot("active");
+        if (disposed || revision !== operation)
+            return;
+        active = world;
+        name.textContent = world?.name || "No active world";
+        name.title = world?.name || "";
+        editButton.disabled = !world;
+        infoButton.disabled = !world;
+        footerInfo.textContent = world ? world.summary.width + " × " + world.summary.height + " · SEED " + world.summary.seed : "WORLD NOT PUBLISHED";
+        if (!world) {
+            disconnect();
+            showBanner("No active world yet. Open World Editor, create or import a map, then choose Send to Atlas.", "empty");
+            updateStatus();
+            return;
+        }
+        info(world);
+        if (session?.getState() === "error") {
+            disconnect(); // Recover from a failed native import with a fresh renderer.
+        }
+        if (appliedMapText === world.mapText && session?.getState() === "loaded") {
+            updateStatus();
+            return; // Renames don't force a multi-megabyte reload or lose camera position.
+        }
+        showBanner("Opening Azgaar's native map. Layers, Style and zoom will be available when it finishes loading.");
+        const renderer = connect();
+        updateStatus();
         try {
-            const world = await loadWorldSlot("active");
-            if (disposed || id !== requestNumber)
+            await renderer.load(world.mapText, world.name + ".map");
+            if (disposed || revision !== operation)
                 return;
-            current = world;
-            stage.replaceChildren();
-            if (imageUrl) {
-                URL.revokeObjectURL(imageUrl);
-                imageUrl = null;
-            }
-            heading.textContent = world?.name || "No active world";
-            heading.title = heading.textContent;
-            editButton.disabled = !world;
-            fit();
-            infoPanel.hidden = true;
-            infoButton.setAttribute("aria-expanded", "false");
-            if (!world) {
-                message("Create or import a world in Azgaar, then choose Send to Atlas to publish it here.", "Your Atlas is waiting.");
-                leftFooter.replaceChildren(statusChip("No active world", "warning"));
-                rightFooter.textContent = "OPEN WORLD EDITOR TO BEGIN";
-                return;
-            }
-            if (world.preview instanceof Blob && world.preview.size) {
-                imageUrl = URL.createObjectURL(world.preview);
-                const img = document.createElement("img");
-                img.className = "atlas-v2-image";
-                img.alt = "Complete Azgaar map of " + world.name;
-                img.src = imageUrl;
-                img.draggable = false;
-                img.addEventListener("error", () => ctx.toast("The Atlas illustration failed to display. Try updating the map from Azgaar."));
-                stage.append(img);
-            }
-            else
-                message("Reopen this world in Azgaar and choose Update Atlas to recreate its map preview.", "Map preview unavailable");
-            fillInfo(world);
-            leftFooter.replaceChildren(statusChip("Published world", "success"));
-            rightFooter.textContent = world.summary.width + " × " + world.summary.height + "  ·  SEED " + world.summary.seed;
+            appliedMapText = world.mapText;
+            banner.hidden = true;
+            updateStatus();
         }
         catch (error) {
-            if (disposed || id !== requestNumber)
+            if (disposed || revision !== operation)
                 return;
-            stage.replaceChildren();
-            message(error instanceof Error ? error.message : String(error), "Unable to load the Atlas");
-            leftFooter.replaceChildren(statusChip("Storage error", "error"));
-            rightFooter.textContent = "WORLD STORAGE";
+            showBanner("Unable to open the native map: " + (error instanceof Error ? error.message : String(error)), "error");
+            updateStatus();
         }
     }
-    viewport.addEventListener("pointerdown", event => {
-        if (event.button !== 0 || !current?.preview || !event.target.closest(".atlas-v2-map-stage") || event.target.closest("button,a,input,[role=button]"))
-            return;
-        pointer = event.pointerId;
-        pointerX = event.clientX;
-        pointerY = event.clientY;
-        viewport.setPointerCapture(event.pointerId);
-        viewport.classList.add("is-panning");
-        viewport.focus({ preventScroll: true });
-    });
-    viewport.addEventListener("pointermove", event => {
-        if (pointer !== event.pointerId)
-            return;
-        camera = panBy(camera, event.clientX - pointerX, event.clientY - pointerY);
-        pointerX = event.clientX;
-        pointerY = event.clientY;
-        paintCamera();
-    });
-    const stopPan = (event) => {
-        if (pointer !== event.pointerId)
-            return;
-        pointer = null;
-        viewport.classList.remove("is-panning");
-        if (viewport.hasPointerCapture(event.pointerId))
-            viewport.releasePointerCapture(event.pointerId);
-    };
-    viewport.addEventListener("pointerup", stopPan);
-    viewport.addEventListener("pointercancel", stopPan);
-    viewport.addEventListener("wheel", event => {
-        if (!event.target.closest(".atlas-v2-map-stage"))
-            return;
-        event.preventDefault();
-        zoom(event.deltaY < 0 ? 1.12 : 1 / 1.12, event.clientX, event.clientY);
-    }, { passive: false });
-    viewport.addEventListener("keydown", event => {
-        if (event.target !== viewport)
-            return;
-        if (event.key === "0" || event.key === "Home") {
-            event.preventDefault();
-            fit();
-        }
-        else if (event.key === "+" || event.key === "=") {
-            event.preventDefault();
-            zoom(1.25);
-        }
-        else if (event.key === "-") {
-            event.preventDefault();
-            zoom(1 / 1.25);
-        }
-        else if (event.key.startsWith("Arrow")) {
-            const offsets = { ArrowLeft: [55, 0], ArrowRight: [-55, 0], ArrowUp: [0, 55], ArrowDown: [0, -55] };
-            const d = offsets[event.key];
-            if (d) {
-                event.preventDefault();
-                camera = panBy(camera, ...d);
-                paintCamera();
-            }
-        }
-        else if (event.key === "Escape" && !infoPanel.hidden) {
-            infoPanel.hidden = true;
-            infoButton.setAttribute("aria-expanded", "false");
-        }
-    });
-    const unsub = subscribeCurrentWorld(() => void refresh());
-    void refresh();
-    paintCamera();
+    const stopWorld = subscribeCurrentWorld(() => schedule(refresh));
+    const windowEl = host.closest(".os-window");
+    // Parking retains the iframe and its D3 camera. Do not call fitMapToScreen
+    // on resume, as that would reset the player's zoom and browsing position.
+    const onResume = () => { updateStatus(); };
+    windowEl?.addEventListener("kingdomos:window-resumed", onResume);
+    schedule(refresh);
     return () => {
         disposed = true;
-        unsub();
+        stopWorld();
+        windowEl?.removeEventListener("kingdomos:window-resumed", onResume);
         disposeActionMenu(menu);
-        if (imageUrl)
-            URL.revokeObjectURL(imageUrl);
+        disconnect();
     };
 }
-registerApp({ id: "atlas", title: "World Atlas", icon: "globe", description: "Explore the active world map", width: 930, height: 640, render: mountAtlas });
+registerApp({
+    id: "atlas", title: "World Atlas", icon: "globe",
+    description: "Interactive Azgaar map, Layers and Style",
+    width: 1120, height: 740, maximizeOnOpen: true, keepAliveOnClose: true,
+    render: mountAtlas
+});

@@ -1,0 +1,18 @@
+import{i as e}from"./index-J388_yXx.js";import{n as t}from"./options-model-Cj3O8K4p.js";import{i as n,t as r}from"./layers-D3_jdNGw.js";import{r as i}from"./node-utils-BA3zRxIe.js";import{t as a}from"./dialog-BYT3Byo1.js";var o=n.getDefaultOptions(),s=[{type:`select`,id:`tradeAnimDisplayType`,label:e(`Trade type`),tip:e(`Which trade types to display: local (burg-market), global (market-market), or both`),key:`displayType`,default:o.displayType,selectOptions:[`local`,`global`,`both`]},{type:`slider`,id:`tradeAnimConcurrent`,label:e(`Animations`),tip:e(`Target number of trade animations visible at once. New ones spawn as old ones finish. Higher = more simultaneous animations, can cause lag on slower devices`),min:1,max:500,step:1,key:`concurrent`,default:o.concurrent},{type:`slider`,id:`tradeAnimDuration`,label:e(`Travel duration`),tip:e(`Milliseconds per map unit travelled. Lower = faster animations`),min:1,max:1e3,step:1,key:`duration`,default:o.duration},{type:`slider`,id:`tradeAnimLandDurationModifier`,label:e(`Land slowdown`),tip:e(`Multiplier applied to travel duration on land segments. Higher = slower land animations`),min:.1,max:20,step:.1,key:`landDurationModifier`,default:o.landDurationModifier},{type:`slider`,id:`tradeAnimSegmentChangePause`,label:e(`Segment pause`),tip:e(`Pause between land and water legs of a trip, in milliseconds. Higher = longer pause`),min:0,max:5e3,step:100,key:`segmentChangePause`,default:o.segmentChangePause},{type:`slider`,id:`tradeAnimMarkerSize`,label:e(`Marker size`),tip:e(`Marker icon size in map units. Wagons render at half this size. Higher = bigger icons`),min:1,max:50,step:.5,key:`markerSize`,default:o.markerSize}];function c(){options.app.mode||(a.closeAll(`#tradeAnimationEditor, .stable`),l(),a.open(`tradeAnimationEditor`,{title:e(`Trade Animation Editor`),position:{my:`right top`,at:`right-10 top+10`,of:`svg`}}))}function l(){a.destroy(`tradeAnimationEditor`),document.body.insertAdjacentHTML(`beforeend`,u());for(let e of s){let n=e.key,a=i(e.id),o=i(`${e.id}Reset`),s=options.app.trade.animation[n]??e.default;a.value=String(s),a.addEventListener(`input`,i=>{if(i.target!==i.currentTarget)return;let o=e.type===`slider`?a.valueAsNumber:a.value;t.set(e=>e.app.trade.animation={...e.app.trade.animation,[n]:o}),r.draw(`trade`)}),o.addEventListener(`click`,()=>{t.set(t=>t.app.trade.animation={...t.app.trade.animation,[n]:e.default}),a.value=String(e.default),r.draw(`trade`)})}}function u(){return`
+    <div id="tradeAnimationEditor" class="dialog" style="display:none">
+      <style>
+        #tradeAnimationEditor slider-input { width: 100%; }
+        #tradeAnimationEditor slider-input input[type=range] { flex: 1; min-width: 0; }
+      </style>
+      <table style="border-collapse: collapse;width:100%">
+        <tbody>${s.map(({id:t,label:n,type:r,selectOptions:i,tip:a,min:o,max:s,step:c,key:l,default:u})=>{let d=options.app.trade.animation[l]??u;return`
+      <tr data-tip="${a}">
+        <td style="padding: 0">${n}</td>
+        <td style="padding: 0">${r===`select`&&i?`<select id="${t}" style="width: 100%; font-size: smaller;">${i.map(e=>`<option value="${e}" ${e===d?`selected`:``}>${e}</option>`).join(``)}</select>`:`<slider-input id="${t}" min="${o}" max="${s}" step="${c}" value="${d}"></slider-input>`}</td>
+        <td style="padding: 0">
+          <button id="${t}Reset" data-tip="${e(`Reset to default`)}"
+            style="font-size:.85em; padding:1px 5px; margin-left: 0.3em">↺</button>
+        </td>
+      </tr>`}).join(``)}</tbody>
+      </table>
+    </div>`}var d={open:c};export{d as TradeAnimationEditor};
