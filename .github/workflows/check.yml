@@ -8,11 +8,12 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: kingdomos-main-build
+  group: kingdomos-fast-ui-build
   cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
