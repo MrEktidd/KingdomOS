@@ -1,0 +1,6 @@
+import{St as e}from"./options-model-DdZ2yl81.js";import{T as t,i as n}from"./node-utils-B7j8BhBd.js";import{l as r}from"./production-generator-nLWGDzJc.js";var i=`diplomacyMark`,a=0;function o(e){for(let i of pack.states){if(!i.i||i.removed)continue;let a=i.diplomacy?.[e],o=a&&r[a]?.color||`#4682b4`;n(`state${i.i}`)?.setAttribute(`fill`,o),n(`state-gap${i.i}`)?.setAttribute(`stroke`,o),n(`state-border${i.i}`)?.setAttribute(`stroke`,t(o).darker().hex())}s(e)}function s(t){if(t===a&&n(i))return;c(),a=t;let{cells:r}=pack,o=[];for(let e of r.i)r.state[e]===t&&o.push(e);let s=e(o,pack);s&&n(`debug`)?.insertAdjacentHTML(`beforeend`,`<g id="${i}" pointer-events="none" fill="none">
+      <path d="${s}" stroke="#fff" stroke-width="3" stroke-opacity=".8" />
+      <path d="${s}" stroke="#000" stroke-width="2" stroke-dasharray="8 6">
+        <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="0.7s" repeatCount="indefinite" />
+      </path>
+    </g>`)}function c(){a=0,n(i)?.remove()}export{o as n,c as t};

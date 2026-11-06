@@ -1,0 +1,1 @@
+function e(e){let t=e=>String(e).padStart(2,`0`),n=new Date,r=[n.getFullYear(),t(n.getMonth()+1),t(n.getDate()),t(n.getHours()),t(n.getMinutes())].join(`-`),i=e?`${e} `:``;return`${options.map.lore.name} ${i}${r}`}export{e as t};

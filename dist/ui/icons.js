@@ -26,6 +26,7 @@ export const paths = {
     flag: 'M5 22V4m0 1c5-4 9 4 15 0v10c-6 4-10-4-15 0',
     calendar: 'M3 6h18v15H3V6ZM7 2v8m10-8v8M3 11h18',
     spark: 'm12 2 2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3L12 2Z',
+    "refresh-cw": 'M20 7v5h-5M4 17v-5h5M5.5 9a7 7 0 0 1 12-2l2.5 5M4 12l2.5 5A7 7 0 0 0 19 15',
     palette: 'M12 2a10 10 0 0 0 0 20h1a2 2 0 0 0 1-3.7c-1.1-.6-.7-2.3.6-2.3H18a4 4 0 0 0 4-4A10 10 0 0 0 12 2ZM7 12h.01M9 7h.01M15 7h.01M18 12h.01'
 };
 export function icon(name, size = 18) {
