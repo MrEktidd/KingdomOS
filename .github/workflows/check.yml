@@ -20,7 +20,7 @@ jobs:
           node-version: '24'
       - name: Verify KingdomOS
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund
           npm test
       # Pin the fork so upstream changes cannot silently break gameplay integration.
       # The fork remains a separate repo and can be updated independently.
