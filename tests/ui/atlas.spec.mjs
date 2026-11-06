@@ -177,7 +177,10 @@ test("Actual Azgaar Atlas loads a native project and exposes Layers and Style, n
   await expect(native.locator("#searchButton")).toBeHidden();
   await native.locator("#styleTab").click();
   await expect(native.locator("#styleContent")).toBeVisible();
-  // Alt or F2 should not invoke the editor-only generation UI.
+  // Dismiss the floating style panel before interacting with the map behind it.
+  await native.locator("#optionsHide").click();
+  await expect(native.locator("#options")).toBeHidden();
+  // F2 should not invoke the editor-only generation UI.
   await native.locator("#map").click({position:{x:50,y:50}});
   await page.keyboard.press("F2");
   await expect(native.locator("#regenerate")).toBeHidden();
