@@ -42,7 +42,11 @@ export function mountDesktop(root) {
         s.width = w.w + "px";
         s.height = w.h + "px";
         s.zIndex = String(w.z);
-        w.element.hidden = w.minimized || w.parked;
+        // Keep a parked iframe laid out offscreen: Azgaar SVG export still needs layout measurements.
+        w.element.hidden = w.minimized && !w.parked;
+        w.element.classList.toggle("parked", w.parked);
+        w.element.toggleAttribute("inert", w.parked);
+        w.element.setAttribute("aria-hidden", String(w.parked));
         w.element.classList.toggle("maximized", w.maximized);
     }
     function focused(w) {

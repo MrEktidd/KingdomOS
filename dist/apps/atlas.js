@@ -76,7 +76,7 @@ function mountAtlas(host, ctx) {
         }
         if (getEditorState() === "ready" && !confirm("Load the Atlas world into the editor? The current unsaved editor map may be replaced."))
             return;
-        if (getEditorState() === "disconnected")
+        if (getEditorState() !== "ready")
             skipEditorRecoveryOnce();
         ctx.open("world-editor");
         void importMapAndWait(worldMapBlob(world), world.name + ".map")
