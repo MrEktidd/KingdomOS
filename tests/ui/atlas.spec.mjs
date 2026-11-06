@@ -112,8 +112,18 @@ test("World Editor still parks and reuses its native iframe",async({page})=>{
 });
 
 test("Actual Azgaar Atlas loads a native project and exposes Layers and Style, not editing tools",async({page})=>{
-  test.setTimeout(150000);
+  test.setTimeout(85000);
   await page.setViewportSize({width:1330,height:860});
+  await page.addInitScript(()=>{
+    if(window===window.top){
+      window.__atlasBridgeLog=[];
+      window.addEventListener("message",event=>{
+        if(event.data?.protocol==="kingdomos-azgaar"){
+          window.__atlasBridgeLog.push({kind:event.data.kind,name:event.data.name,seed:event.data.data?.seed});
+        }
+      });
+    }
+  });
   await page.goto("/");
   const response=await page.request.get("/tests/fixtures/world.map");
   expect(response.ok(),"CI should stage an actual Azgaar .map fixture").toBe(true);
@@ -121,7 +131,39 @@ test("Actual Azgaar Atlas loads a native project and exposes Layers and Style, n
   expect(mapText.length).toBeGreaterThan(1000000);
   await publish(page,mapText);
   await page.locator('.dock-app[aria-label="World Atlas"]').click();
-  await expect(page.locator(".atlas-native-footer")).toContainText("Native map ready",{timeout:125000});
+  try{
+    await expect(page.locator(".atlas-native-footer")).toContainText("Native map ready",{timeout:45000});
+  }catch(error){
+    const diagnostic=await page.evaluate(()=>{
+      const iframe=document.querySelector(".atlas-native-frame");
+      const native=iframe?.contentWindow;
+      let detail=null;
+      try{
+        const doc=native?.document;
+        detail={
+          readyState:doc?.readyState,
+          location:native?.location.href,
+          mode:doc?.documentElement.dataset.kingdomosMode,
+          title:doc?.title,
+          mapExists:!!doc?.querySelector("#map"),
+          viewboxExists:!!doc?.querySelector("#viewbox"),
+          mapSeed:native?.options?.map?.seed,
+          viewOnly:native?.options?.map?.viewOnly,
+          cellCount:native?.pack?.cells?.i?.length,
+          tooltip:doc?.querySelector("#tooltip")?.textContent,
+          loadingText:doc?.querySelector("#loading-text")?.textContent,
+          dialogText:doc?.querySelector("#dialogs")?.textContent?.slice(0,300)
+        };
+      }catch(e){detail={error:String(e)};}
+      return {
+        bridgeEvents:window.__atlasBridgeLog,
+        iframe:detail,
+        atlasBanner:document.querySelector(".atlas-native-banner")?.textContent,
+        footer:document.querySelector(".atlas-native-footer")?.textContent
+      };
+    });
+    throw new Error("Native Atlas integration diagnostic: "+JSON.stringify(diagnostic)+"; "+String(error));
+  }
   const native=page.frameLocator(".atlas-native-frame");
   const map=native.locator("#map");
   await expect(map).toBeVisible();
