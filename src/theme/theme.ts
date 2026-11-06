@@ -62,7 +62,7 @@ const listeners = new Set<Listener>();
 const copy = <T>(value:T):T => JSON.parse(JSON.stringify(value)) as T;
 const isRecord = (x:unknown): x is Record<string,unknown> => Boolean(x) && typeof x==="object" && !Array.isArray(x);
 const validHex = (v:unknown):v is string => typeof v==="string" && /^#[0-9a-fA-F]{6}$/.test(v);
-const bounded = (v:unknown,min:number,max:number) => typeof v==="number" && Number.isFinite(v) && v>=min && v<=max;
+const bounded = (v:unknown,min:number,max:number):v is number => typeof v==="number" && Number.isFinite(v) && v>=min && v<=max;
 const storage = () => { try { return window.localStorage; } catch { return null; } };
 
 function parseTheme(value:unknown):Theme {
